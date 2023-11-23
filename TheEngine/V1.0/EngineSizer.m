@@ -39,7 +39,7 @@ heightVehicle = (heightEngine + heightCoupler1 + heightOx + heightCoupler2 + hei
 
 %TESTING EXCEL READ
 %type ./MasterParameters.xlsx
-T = readtable("MasterParameters.xlsx");
+T = readtable("../../MasterParameters.xlsx");
 
 oxDensityStart = excelReader("oxDensityStart", T);
 
