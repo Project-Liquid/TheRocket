@@ -3,8 +3,39 @@ clc
 clearvars
 
 tic
-%% Target
 
+%% Input Variables
+  clc
+% Define the path to the Excel file
+excelFilePath = "../../MasterParameters.xlsx";
+
+% Define the list of variables you want to pull
+variablesToPull = {
+    'OFtarget',
+    'oxDensityStart',
+    'fuelDensityStart',
+    'heightOx',
+    'heightFuel',
+    'OD'
+    'ullageOx',
+    'ullageFuel',
+    'tankThick',
+    'temperature',
+    'diamThroat',
+    'cstarEff',
+    'CdOx',
+    'CdFuel',
+    'elementDiamOx',
+    'elementDiamFuel',
+    'elementCountOx',
+    'elementCountFuel'
+    };
+   
+% Call the function
+ex = excelReader(excelFilePath, variablesToPull);
+
+
+%% Target
 % 1. To output thrust profile of vehicle
 
 
@@ -15,119 +46,47 @@ i = 1; %Start at i = 1, since this is the default starter index for matlab
 preallocation = 10000; %Preallocation of memory for any arrays
 timeVec = zeros(1,preallocation);
 
-%Estimate Tank Sizing Ratio
-OFtarget = 5;
-oxDensityStart = 786;
-fuelDensityStart = 339;
-heightRatioOF = OFtarget * fuelDensityStart / oxDensityStart;
-
-
-%All in inches below
-heightNoseCone = 24;
-heightMainBay = 22.5;
-heightAvBay = 5;
-heightDrogueBay = 10;
-heightCoupler3 = 5;
-heightOx = 25;
-heightFuel = heightOx / heightRatioOF; %originally 11.5
-heightCoupler2 = 5;
-heightCoupler1 = 5;
-heightEngine = 10; 
-OD = 5;
-
-heightVehicle = (heightEngine + heightCoupler1 + heightOx + heightCoupler2 + heightFuel + heightCoupler3 + heightDrogueBay + heightAvBay + heightMainBay + heightNoseCone)/12;
-
-%TESTING EXCEL READ
-%type ./MasterParameters.xlsx
-T = readtable("../../MasterParameters.xlsx");
-
-oxDensityStart = excelReader("oxDensityStart", T);
-
 %% Conversion Factors
 %Conversion factors from imperial to metric
 in2m = 0.0254;
 psi2pa = 6894.76;
 lbf2N = 4.44822;
 lbm2kg = 0.45359237; %for converting pounds to kg
-
-%% %% GEOMETRIC POSITIONING OF ELEMENTS
-oxPosition = heightEngine + heightCoupler1 + (heightOx/2);
-fuelPosition = heightEngine + heightCoupler1 + heightOx + heightCoupler2 + (heightFuel/2);
-
-oxPositionSI = oxPosition * in2m;
-fuelPositionSI = fuelPosition * in2m;
-
-
-%% Key User Inputs
-
-... Tank temperature, tank volume, tank ullage volume
     
 %% TANKS
 
-%Tank General: Inputs
-tankThick = 0.25; %in
-temperature = 293; %Kelvin. Tempearture of each prop tank at t=0
-
-
 %Tank General: Intermediate Calculations
-OD_SI = OD * in2m; %SI
-ID_SI = (OD - (2*tankThick)) * in2m; %SI
+OD_SI = ex.OD * in2m; %SI
+ID_SI = (ex.OD - (2*ex.tankThick)) * in2m; %SI
 radiusSI = OD_SI / 2;
 tankAreaInternal = (pi/4) * ID_SI^2; %SI
-heightOx = heightOx * in2m; %SI
-heightFuel = heightFuel * in2m; %SI
+heightOx = ex.heightOx * in2m; %SI
+heightFuel = ex.heightFuel * in2m; %SI
 
 %OX: Inputs
 oxidizer = 'N2O';
-ullageOx = 0.15; %Between 0 to 1. Indicates volume fraction of ox
 volumeOx = tankAreaInternal * heightOx;
 %massOx = 8; %lbs of prop. Includes liquid and gas phase
 
-%OX: Intermediate Calculations
-%massOxSI = massOx * lbm2kg;
-
 %Fuel: Inputs
 fuel = 'Ethane';
-ullageFuel = 0.15; %Between 0 to 1. Indicates volume fraction of ox
 volumeFuel = tankAreaInternal * heightFuel;
-%massFuel = 2; %lbs of prop. Includes liquid and gas phase
-
-%Fuel: Intermediate Calculations
-%massFuelSI = massFuel * lbm2kg;
 
 %TANK OBJECTS
-oxTank = TheTanks(oxidizer, ullageOx, temperature, tankAreaInternal, i, OD_SI, heightOx, volumeOx);
-fuelTank = TheTanks(fuel, ullageFuel, temperature, tankAreaInternal, i, OD_SI, heightFuel, volumeFuel);
+oxTank = TheTanks(oxidizer, ex.ullageOx, ex.temperature, tankAreaInternal, i, OD_SI, heightOx, volumeOx);
+fuelTank = TheTanks(fuel, ex.ullageFuel, ex.temperature, tankAreaInternal, i, OD_SI, heightFuel, volumeFuel);
 
 %% ENGINE PARAMETERS
-
-diamThroat = 1.65; %in... original 1.48
-diamThroat = diamThroat * in2m; %Converting to metric
-cstarEff = 0.85;
+diamThroat = ex.diamThroat * in2m; %Converting to metric
 Pamb = 101000;
 
 engine = EngineParameters(diamThroat, i);
-heightEngineSI = heightEngine * in2m;
-nozzle_radiusSI = OD_SI / 2;
-
-
 %% INJECTOR PARAMETERS
+elementDiamOx = ex.elementDiamOx * in2m; %Metric
+elementDiamFuel = ex.elementDiamFuel * in2m; %Metric
 
-CdOx = 0.75;
-CdFuel = 0.75;
-
-elementDiamOx = 0.2637;%0.3259; %Inches, originally 0.44
-elementDiamOx = elementDiamOx * in2m; %Metric
-
-elementDiamFuel = 0.1797; %Inches, originally 0.17
-elementDiamFuel = elementDiamFuel * in2m; %Metric
-
-elementCountOx = 1;
-elementCountFuel = 1;
-
-injectorOx = InjectorParameters(CdOx, elementDiamOx, elementCountOx);
-injectorFuel = InjectorParameters(CdFuel, elementDiamFuel, elementCountFuel);
-
+injectorOx = InjectorParameters(ex.CdOx, elementDiamOx, ex.elementCountOx);
+injectorFuel = InjectorParameters(ex.CdFuel, elementDiamFuel, ex.elementCountFuel);
 
 %% Changing State of the tank
 
@@ -227,7 +186,7 @@ while fuelTank.qualUnderThreshold && oxTank.qualUnderThreshold
     Pe = Pamb;
     
     % Calculates characteristic velocity
-    engine.charV(i) = (engine.Pc(i) * engine.areaThroat / engine.m_dot(i)) * cstarEff;
+    engine.charV(i) = (engine.Pc(i) * engine.areaThroat / engine.m_dot(i)) * ex.cstarEff;
     
     % Calculates coefficient of thrust
     engine.Cf(i) = sqrt((2*engine.gamma(i)^2/(engine.gamma(i)-1))*((2/(engine.gamma(i)+1))^((engine.gamma(i)+1)/(engine.gamma(i)-1)))*(1-(Pe/engine.Pc(i))^((engine.gamma(i)-1)/engine.gamma(i))));
