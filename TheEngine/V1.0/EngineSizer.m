@@ -221,32 +221,44 @@ end
 %starting with just some of the import ones for CSV files
 timeVec(i+1:end) = [];
 engine.thrust(i+1:end) = [];
+engine.Pc(i+1:end) = [];
 oxTank.mLiq(i+1:end) = [];
 oxTank.mVap(i+1:end) = [];
+oxTank.P(i+1:end) = [];
 fuelTank.mLiq(i+1:end) = [];
 fuelTank.mVap(i+1:end) = [];
+fuelTank.P(i+1:end) = [];
 
 %Prepping CSV files
 enginePerformance = [timeVec; engine.thrust];
+enginePressurePSI = [timeVec; engine.Pc/psi2pa];
 oxTankMassLiq = [timeVec; oxTank.mLiq];
 oxTankMassVap = [timeVec; oxTank.mVap];
+oxTankPressurePSI = [timeVec; oxTank.P/psi2pa];
 fuelTankMassLiq = [timeVec; fuelTank.mLiq];
 fuelTankMassVap = [timeVec; fuelTank.mVap];
+fuelTankPressurePSI = [timeVec; fuelTank.P/psi2pa];
 
 %Transpose for time - data format
 enginePerformance = transpose(enginePerformance);
+enginePressurePSI = transpose(enginePressurePSI);
 oxTankMassLiq = transpose(oxTankMassLiq);
 oxTankMassVap = transpose(oxTankMassVap);
+oxTankPressurePSI = transpose(oxTankPressurePSI);
 fuelTankMassLiq = transpose(fuelTankMassLiq);
 fuelTankMassVap = transpose(fuelTankMassVap);
+fuelTankPressurePSI = transpose(fuelTankPressurePSI);
 
 %% EXPORTING TO CSV FILES
 
 csvwrite('enginePerformance', enginePerformance)
+csvwrite('enginePressure', enginePressurePSI)
 csvwrite('oxTankMassLiq', oxTankMassLiq) 
 csvwrite('oxTankMassVap', oxTankMassVap)
+csvwrite('oxTankPressure', oxTankPressurePSI)
 csvwrite('fuelTankMassLiq', fuelTankMassLiq) 
 csvwrite('fuelTankMassVap', fuelTankMassVap)
+csvwrite('fuelTankPressure', fuelTankPressurePSI)
 
 toc
 
