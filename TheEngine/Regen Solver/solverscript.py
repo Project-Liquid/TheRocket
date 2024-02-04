@@ -57,10 +57,14 @@ sol.plotCoolantDensity()
 
 '''Run Special Plots '''
 #iterate over coolant quality from 0 to 0.5 in steps of 0.1
+P_drop = list()
+X_ci = list()
+
 N_range = 10
-def_ID = "Geometry with varying T_hw:"
+def_ID = "Pressure with varying X_ci:"
 for i in range(N_range):
-    def_T_hw = 1200 - i*20
+    def_X_ci = i*0.1
+    
     sol.defineParameters(def_P0, 
                          def_Ti, 
                          def_P_ci, 
@@ -73,12 +77,28 @@ for i in range(N_range):
                          def_k_wall, 
                          def_N)
     T_coolant_f, P_coolant_f = sol.run()
+    
+    X_ci.append(def_X_ci)
+    P_drop.append(def_P_ci - P_coolant_f)
     #print("Coolant Final Temperature after Cycle ", i+2, ": ", T_coolant_f, " K", "\nCoolant Final Pressure after Cycle ", i+2, ": ", P_coolant_f, " Pa")
-    sol.plotCoolingJacketAxs(axs = sol.plotSubplot(N_range), ID = def_ID + " {}".format(def_T_hw))
+    sol.plotCoolantPressureAxs(axs = sol.plotSubplot(N_range), ID = def_ID + " {}".format(def_X_ci))
 
 #sol.showSubplot("Velocity with varying X_ci")
-sol.saveSubplot("jacketvsT_hw.png")
+sol.saveSubplot("pressurevsX_ci.png")
 sol.resetSubplot()
+
+# plot coolant drop vs X_ci
+fig = plt.figure(figsize  = (10, 5))
+plt.plot(X_ci, P_drop, 'olive', label = 'Coolant Pressure Drop')
+plt.title('Coolant Pressure Drop vs Inital Vapor Quality')
+plt.xlabel('Coolant Quality')
+plt.ylabel('Pressure Drop [Pa]')
+plt.grid()
+plt.legend()
+plt.savefig("solverplots/analysis/pressuredropvsX_ci.png")
+
+
+sys.exit()
 #iterate over coolant quality from 0 to 0.5 in steps of 0.1
 
 N_range = 10
