@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 plotfolder = "solverplots/"
 solvedplotfolder = plotfolder + "solved/"
+analysisplotfolder = plotfolder + "analysis/"
 
 ''' Equations and Functions Used in Solver '''
 # define exhaust gas transport properties - using Cantera
@@ -320,6 +321,11 @@ class Node:
         self.t_w = 0
         self.X = 0
         self.H = 0
+        self.rho_c = 0
+        self.k_c = 0
+        self.mu_c = 0
+        self.cp_c = 0
+        
     
     def set_x(self, x):
         self.x = x
@@ -388,6 +394,19 @@ class Node:
 
     def set_H(self, H):
         self.H = H
+        
+    def set_rho_c(self, rho_c):
+        self.rho_c = rho_c
+        
+    def set_k_c(self, k_c):
+        self.k_c = k_c
+    
+    def set_mu_c(self, mu_c):
+        self.mu_c = mu_c
+        
+    def set_cp_c(self, cp_c):
+        self.cp_c = cp_c
+
 
     # special methods
     def print_coolant_parameters(self):
@@ -436,6 +455,8 @@ def setupDirectories():
         os.mkdir(plotfolder)
     if not os.path.exists(solvedplotfolder):
         os.mkdir(solvedplotfolder)
+    if not os.path.exists(analysisplotfolder):
+        os.mkdir(analysisplotfolder)
 
 def defineParameters(P0, Ti, P_ci, X_ci, x_off, T_hw, T_cw, N_channels, t_rib, k_wall, N):
     global def_P0, def_Ti, def_P_ci, def_X_ci, def_x_off, def_T_hw, def_T_cw, def_N_channels, def_t_rib, def_k_wall, def_N
@@ -886,6 +907,24 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
 
     # set initial node to node 0
     node0 = nodesc[0]
+    
+    
+    # set properties of coolant at first node
+    if node0.X < 1:
+        rho_c = rho_coolant_phase(node0.P_c, node0.X) # set coolant density at first node
+        k_c = k_coolant_phase(node0.P_c, node0.X) # set coolant conductivity at first node
+        mu_c = mu_coolant_phase(node0.P_c, node0.X) # set coolant viscosity at first node
+        cp_c = cp_coolant_phase(node0.P_c, node0.X) # set coolant specific heat at first node
+    else:
+        rho_c = rho_coolant_super(node0.T_c, node0.P_c)
+        k_c = k_coolant_super(node0.T_c, node0.P_c)
+        mu_c = mu_coolant_super(node0.T_c, node0.P_c)
+        cp_c = cp_coolant_super(node0.T_c, node0.P_c)
+        
+    node0.set_rho_c(rho_c) # set coolant density at first node
+    node0.set_k_c(k_c) # set coolant conductivity at first node
+    node0.set_mu_c(mu_c) # set coolant viscosity at first node
+    node0.set_cp_c(cp_c) # set coolant specific heat at first node
 
 
     # define function to find wall thickness such that necessary temperature drop across wall is achieved
@@ -1054,14 +1093,26 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
 
         if node.X < 1: # determine coolant properties
             rho_c = rho_coolant_phase(node.P_c, node.X)
+            k_c = k_coolant_phase(node.P_c, node.X)
+            mu_c = mu_coolant_phase(node.P_c, node.X)
+            cp_c = cp_coolant_phase(node.P_c, node.X)
         else:
             rho_c = rho_coolant_super(node.T_c, node.P_c)
+            k_c = k_coolant_super(node.T_c, node.P_c)
+            mu_c = mu_coolant_super(node.T_c, node.P_c)
+            cp_c = cp_coolant_super(node.T_c, node.P_c)
 
         v_c = o_mdot / (rho_c * node.w * N_channels * h) # coolant velocity [m/s]
         node.set_h(h)
         node.set_v_c(v_c)
         node.set_dv_c(v_c - nodesc[i].v_c) # [m/s] - set coolant velocity change as velocty at current node minus velocity at previous node with N = i
 
+        # set coolant properties at node
+        node.set_rho_c(rho_c) # set coolant density at first node
+        node.set_k_c(k_c) # set coolant conductivity at first node
+        node.set_mu_c(mu_c) # set coolant viscosity at first node
+        node.set_cp_c(cp_c) # set coolant specific heat at first node
+    
         # step 3 - find pressure at next node (step 3)
         nodesc[i+2].set_P_c(P_next(node))
 
@@ -1092,14 +1143,26 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
 
         if node.X < 1: # determine coolant properties
             rho_c = rho_coolant_phase(node.P_c, node.X)
+            k_c = k_coolant_phase(node.P_c, node.X)
+            mu_c = mu_coolant_phase(node.P_c, node.X)
+            cp_c = cp_coolant_phase(node.P_c, node.X)
         else:
             rho_c = rho_coolant_super(node.T_c, node.P_c)
+            k_c = k_coolant_super(node.T_c, node.P_c)
+            mu_c = mu_coolant_super(node.T_c, node.P_c)
+            cp_c = cp_coolant_super(node.T_c, node.P_c)
 
         v_c = o_mdot / (rho_c * node.w * N_channels * h) # coolant velocity [m/s]
         node.set_h(h)
         node.set_v_c(v_c)
         node.set_dv_c(v_c - nodesc[-2].v_c) # [m/s] - set coolant velocity change in first node to 0
 
+        # set properties of coolant at node
+        node.set_rho_c(rho_c) # set coolant density at last
+        node.set_k_c(k_c) # set coolant conductivity at last
+        node.set_mu_c(mu_c) # set coolant viscosity at last
+        node.set_cp_c(cp_c) # set coolant specific heat at last
+    
     except ValueError as error:
         print("\nValue Error at Node:", i+1)
         node.print_coolant_parameters()
@@ -1223,6 +1286,18 @@ def plotCoolantVelocity():
     axs2.set_ylabel("Velocity [m/s]", color = "darkviolet")
     plt.savefig(solvedplotfolder + "coolantvel.png", dpi=300)
     plt.show()
+    
+def plotCoolantVelocityAxs(axs, ID):
+    # plot velocity of coolant at each node on overlay of engine geometry
+    plot_geometry(axs)
+    axs.set_title("Coolant Velocity Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "darkviolet", linestyle = "--", linewidth = 0.5)
+    # plot velocity
+    axs2.plot([node.x for node in nodesc], [node.v_c for node in nodesc], color = "darkviolet")
+    axs2.set_ylabel("Velocity [m/s]", color = "darkviolet")
+    return axs
 
 def plotCoolantPressure():
     # plot pressure of coolant at each node on overlay of engine geometry
@@ -1238,6 +1313,18 @@ def plotCoolantPressure():
     axs2.set_ylabel("Pressure [Pa]", color = "g")
     plt.savefig(solvedplotfolder + "coolantpres.png", dpi=300)
     plt.show()
+
+def plotCoolantPressureAxs(axs, ID):
+    # plot pressure of coolant at each node on overlay of engine geometry
+    plot_geometry(axs)
+    axs.set_title("Coolant Pressure Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "g", linestyle = "--", linewidth = 0.5)
+    # plot pressure 
+    axs2.plot([node.x for node in nodesc], [node.P_c for node in nodesc], color = "g")
+    axs2.set_ylabel("Pressure [Pa]", color = "g")
+    return axs   
 
 def plotCoolantTemperature():
     # plot temperature of coolant at each node on overlay of engine geometry
@@ -1268,6 +1355,115 @@ def plotCoolantQuality():
     axs2.set_ylabel("Vapor Quality [-]", color = "r")
     plt.show()
     
+def plotCoolantQualityAxs(axs, ID):
+    # plot coolant Vapor Quality at each node on overlay of engine geometry
+    plot_geometry(axs)
+    axs.set_title("Coolant Vapor Quality Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "r", linestyle = "--", linewidth = 0.5)
+    # plot hydraulic diameter
+    axs2.plot([node.x for node in nodesc], [node.X for node in nodesc], color = "r")
+    axs2.set_ylabel("Vapor Quality [-]", color = "r")
+    return axs
+
+# Coolant Property Plotting
+def plotCoolantDensity():
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    plot_geometry(axs)
+    axs.set_title("Coolant Density Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "dodgerblue", linestyle = "--", linewidth = 0.5)
+    # plot density
+    axs2.plot([node.x for node in nodesc], [node.rho_c for node in nodesc], color = "dodgerblue")
+    axs2.set_ylabel("Density [kg/m^3]", color = "dodgerblue")
+    plt.show()
+
+def plotCoolantDensityAxs(axs, ID):
+    plot_geometry(axs)
+    axs.set_title("Coolant Density Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "dodgerblue", linestyle = "--", linewidth = 0.5)
+    # plot density
+    axs2.plot([node.x for node in nodesc], [node.rho_c for node in nodesc], color = "dodgerblue")
+    axs2.set_ylabel("Density [kg/m^3]", color = "dodgerblue")
+    return axs
+
+def plotCoolantConductivity():
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    plot_geometry(axs)
+    axs.set_title("Coolant Conductivity Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "lime", linestyle = "--", linewidth = 0.5)
+    # plot conductivity
+    axs2.plot([node.x for node in nodesc], [node.k_c for node in nodesc], color = "lime")
+    axs2.set_ylabel("Conductivity [W/m/K]", color = "lime")
+    plt.show()
+    
+def plotCoolantConductivityAxs(axs, ID):
+    plot_geometry(axs)
+    axs.set_title("Coolant Conductivity Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "lime", linestyle = "--", linewidth = 0.5)
+    # plot conductivity
+    axs2.plot([node.x for node in nodesc], [node.k_c for node in nodesc], color = "lime")
+    axs2.set_ylabel("Conductivity [W/m/K]", color = "lime")
+    return axs
+
+def plotCoolantViscosity():
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    plot_geometry(axs)
+    axs.set_title("Coolant Viscosity Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "indigo", linestyle = "--", linewidth = 0.5)
+    # plot viscosity
+    axs2.plot([node.x for node in nodesc], [node.mu_c for node in nodesc], color = "indigo")
+    axs2.set_ylabel("Viscosity [Pa*s]", color = "indigo")
+    plt.show()
+    
+def plotCoolantViscosityAxs(axs, ID):
+    plot_geometry(axs)
+    axs.set_title("Coolant Viscosity Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "indigo", linestyle = "--", linewidth = 0.5)
+    # plot viscosity
+    axs2.plot([node.x for node in nodesc], [node.mu_c for node in nodesc], color = "indigo")
+    axs2.set_ylabel("Viscosity [Pa*s]", color = "indigo")
+    return axs
+
+def plotCoolantSpecificHeat():
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    plot_geometry(axs)
+    axs.set_title("Coolant Specific Heat Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "orangered", linestyle = "--", linewidth = 0.5)
+    # plot specific heat
+    axs2.plot([node.x for node in nodesc], [node.cp_c for node in nodesc], color = "orangered")
+    axs2.set_ylabel("Specific Heat [J/kg/K]", color = "orangered")
+    plt.show()
+    
+def plotCoolantSpecificHeatAxs(axs, ID):
+    plot_geometry(axs)
+    axs.set_title("Coolant Specific Heat Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "orangered", linestyle = "--", linewidth = 0.5)
+    # plot specific heat
+    axs2.plot([node.x for node in nodesc], [node.cp_c for node in nodesc], color = "orangered")
+    axs2.set_ylabel("Specific Heat [J/kg/K]", color = "orangered")
+    return axs
+
 def plotCoolingJacket():
     # plot full chamber geometry visualization
     fig, axs = plt.subplots(figsize = (12, 8))
@@ -1291,7 +1487,64 @@ def plotCoolingJacket():
     plt.savefig(solvedplotfolder + "fullchamber.png", dpi=300)
     plt.show()
 
+def plotCoolingJacketAxs(axs, ID):
+    # plot full chamber geometry visualization
+    # plot geometry walls by filling in between inner wall and outer wall
+    axs.fill_between(x, r, np.add(r, th), color = "k")
+    axs.fill_between(x, -np.array(r), np.subtract(-np.array(r), th), color = "k")
+    # plot coolant walls at each node on overlay by filling in between outer wall and coolant wall
+    axs.fill_between([node.x for node in nodesc], [node.r + node.t_w for node in nodesc], [node.r + node.t_w + node.h for node in nodesc], color = "b")
+    axs.fill_between([node.x for node in nodesc], [-node.r - node.t_w for node in nodesc], [-node.r - node.t_w - node.h for node in nodesc], color = "b")
+    axs.set_title("Cooling Jacket Geometry Across Chamber, ID: {}".format(ID))
+    axs.set_aspect('equal')
+    axs.grid()
+    axs2 = axs.twinx()
+    axs2.grid(color = "brown", linestyle = "--", linewidth = 0.5)
+    # plot coolant wall height
+    axs2.plot([node.x for node in nodesc], [node.h * 1000 for node in nodesc], color = "steelblue", label="Coolant Wall Height")
+    axs2.plot([node.x for node in nodesc], [node.t_w * 1000 for node in nodesc], color = "slategray", label="Chamber Wall Thickness")
+    axs2.set_ylabel("Property Height [mm]", color = "brown")
+    plt.legend()
+    return axs
 
+    
+
+
+''''Subplot Plotting '''
+subplotfig = None
+axes = None
+subplotcounter = 0
+def plotSubplot(N):
+    global subplotfig, axes, subplotcounter
+    if subplotfig is None:
+        subplotfig, axes = plt.subplots(N, 1, figsize = (12, 8 * N))
+    
+    subplotcounter += 1
+    return axes[subplotcounter - 1]
+    # plot 
+
+def showSubplot(title = None):
+    if title is not None:
+        subplotfig.suptitle(title)
+    plt.tight_layout()
+    plt.subplots_adjust(hspace = 0.2)
+    plt.show()
+    
+def saveSubplot(filename, title = None, show = False):
+    if title is not None:
+        subplotfig.title(title)
+    plt.tight_layout()
+    plt.subplots_adjust(hspace = 0.2)
+    plt.savefig(analysisplotfolder + filename, dpi=300)
+    if show:
+        plt.show()
+        
+def resetSubplot():
+    global subplotfig, axes, subplotcounter
+    subplotfig = None
+    axes = None
+    subplotcounter = 0
+    
 ''' Bundled Plotting '''
 def plotAllCoolantProperties():
     # plot pressure of coolant at each node on overlay of engine geometry
