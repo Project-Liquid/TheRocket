@@ -137,10 +137,21 @@ def rho_coolant_super(T, P):
         print("Warning: CoolProp failed to find rho at T = {} K and P = {} Pa. Using saturated gas estimate.".format(T, P))
     return rho
 
+set_mu = 0 
+set_k = 0 
 def mu_coolant_super(T, P):
-    return mu_g(P) # not defined - get estimates as if saturated gas state
+    global set_mu
+    if set_mu == 0: # the first time this function is called, set set_mu to the value of mu_g at that pressure
+        set_mu = mu_g(P)
+        #print("Viscosity set at", set_mu, "Pa s")
+    return set_mu # not defined - get estimates as if saturated gas state
 def k_coolant_super(T, P):
-    return k_g(P) # not defined - get estimates as if saturated gas state
+    global set_k
+    if set_k == 0: # the first time this function is called, set set_mu to the value of mu_g at that pressure
+        set_k = k_g(P)
+        #print("Conductivity set at", set_k, "W/m K")
+    return set_k # not defined - get estimates as if saturated gas state
+
 def Pr_coolant_super(T, P):
     return cp_coolant_super(T, P) * mu_coolant_super(T, P) / k_coolant_super(T, P)
 
@@ -441,8 +452,8 @@ def defineParameters(P0, Ti, P_ci, X_ci, x_off, T_hw, T_cw, N_channels, t_rib, k
     def_N = N
 
 def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, printNodes = False):
-    print("Running Solver...")
-    global gas, nodes, nodesc, x, r, th, M_coolant, x_n, r_n
+    print("Running Solver...\n")
+    global gas, nodes, nodesc, x, r, th, M_coolant, x_n, r_n, o_mdot
 
     # read geometry csv file to pandas
     df = pd.read_csv("enginefiles/enginegeometry.csv", sep=",")
@@ -1134,6 +1145,60 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
     return nodesc[-1].T_c, nodesc[-1].P_c
 
 
+''' Analyze Flow thorugh Injector '''
+def runThroughInjector(C_D = 0.7, A_o = 0.0001, verbose = False, useSPI = False):
+    nodef = nodesc[-1] # final node
+
+    # define values for injector parameters
+    C_D = 0.7 # [-] - discharge coefficient for coolant flow
+    A_o = 0.0001 # [m^2] - area of injector
+
+    # calculate values for injector parameters
+    rho_1 = 0
+    if nodef.X < 1:
+        rho_1 = rho_coolant_phase(nodef.P_c, nodef.X)
+    else:
+        rho_1 = rho_coolant_super(nodef.T_c, nodef.P_c)
+    rho_2 = PropsSI('D', 'P', def_P0, 'T', def_Ti, coolant_name) # [kg/m^3] - density of chamber nitrous estimate
+
+    h_1 = nodef.H # [J/kg] - enthalpy of coolant before entering injector
+    h_2 = PropsSI('H', 'P', def_P0, 'T', def_Ti, coolant_name) # [J/kg] - enthalpy of coolant after entering injector estimate
+
+    # run injector calculations
+    mdot_calc_HEM = 0
+    mdot_calc_SPI = 0
+    Del_P_SPI = 0
+    
+    np.seterr(all='raise')
+    # HEM Calculations
+    try:
+        mdot_calc_HEM = C_D * A_o * np.sqrt(2 * rho_2 * (h_1 - h_2)) # [kg/s] - mass flow rate of coolant
+    except:
+        mdot_calc_HEM = 0
+        if verbose:
+            print("Warning raised: h_1 = {} less than h_2 = {}".format(h_1, h_2), "unable to retrieve HEM mass flow value.")
+    np.seterr(all='warn')
+    
+    # SPI Calculations
+    np.seterr(all='raise')
+    try:
+        mdot_calc_SPI = C_D * A_o * np.sqrt(2 * rho_1 * (nodef.P_c - def_P0)) # [kg/s] - mass flow rate of coolant
+        Del_P_SPI = 1 / (2 * rho_1) * (o_mdot / (C_D * A_o))**2 # [Pa] - pressure drop across injector
+    except:
+        print("Warning raised: P_1 = {} less than P_2 = {}".format(nodef.P_c, def_P0), "unable to retrieve HEM mass flow value.")
+    np.seterr(all='warn')
+    
+    if verbose:
+        print("Enthalpy at injector:", nodes[-1].H, "[J/kg]")
+        print("Enthalpy estimate inside chamber:", h_2, "[J/kg]")
+        print("Difference in Enthalpy:", h_1 - h_2, "[J/kg]")
+        print("Calculated mass flow rate (HEM):", mdot_calc_HEM, "[kg/s]")
+        print("Calculated mass flow rate (SPI):", mdot_calc_SPI, "[kg/s]")
+        print("Pressure drop across injector (SPI):", Del_P_SPI / 1e6, "[MPa]")
+    
+    return mdot_calc_HEM, mdot_calc_SPI, Del_P_SPI
+
+
 ''' Individual Plotting '''
 def plot_geometry(axs):
     axs.plot(x, r, color = "k") # upper innner wall
@@ -1188,7 +1253,6 @@ def plotCoolantTemperature():
     axs2.set_ylabel("Temperature [K]", color = "coral")
     plt.savefig(solvedplotfolder + "coolanttemp.png", dpi=300)
     plt.show()
-    
 
 def plotCoolantQuality():
     # plot coolant Vapor Quality at each node on overlay of engine geometry
@@ -1202,8 +1266,8 @@ def plotCoolantQuality():
     # plot hydraulic diameter
     axs2.plot([node.x for node in nodesc], [node.X for node in nodesc], color = "r")
     axs2.set_ylabel("Vapor Quality [-]", color = "r")
+    plt.show()
     
-
 def plotCoolingJacket():
     # plot full chamber geometry visualization
     fig, axs = plt.subplots(figsize = (12, 8))
@@ -1226,7 +1290,6 @@ def plotCoolingJacket():
     plt.legend()
     plt.savefig(solvedplotfolder + "fullchamber.png", dpi=300)
     plt.show()
-
 
 
 ''' Bundled Plotting '''
@@ -1289,17 +1352,6 @@ def plotAllCoolantProperties():
 
 
 def plotAllCoolingJacketResults():
-    # define function to plot chamber geometry
-    def plot_geometry(axs):
-        axs.plot(x, r, color = "k") # upper innner wall
-        axs.plot(x, -np.array(r), color = "k") # lower inner wall
-        axs.plot(x, np.add(r, th), color = "k") # upper outer wall
-        axs.plot(x, np.subtract(-np.array(r), th), color = "k") # lower outer wall
-        axs.grid()
-        axs.set_xlabel("Axial Position (m)")
-        axs.set_ylabel("Radius (mm)")
-
-
     # plot wall thickness of chamber at each node on overlay of engine geometry
     fig, axs = plt.subplots(figsize = (12, 6))
     fig.set_facecolor('white')
@@ -1350,7 +1402,6 @@ def plotAllCoolingJacketResults():
     plt.savefig(solvedplotfolder + "fullchamber.png", dpi=300)
     plt.show()
 
-        
     # plot coolant channel area at each node on overlay of engine geometry
     fig, axs = plt.subplots(figsize = (12, 6))
     fig.set_facecolor('white')
@@ -1412,7 +1463,6 @@ def exportResultsToCSV():
 
     # export to csv
     nodedf.to_csv("enginefiles/nodedata.csv")
-
 
 def exportResultsToExcel():
     # get lists of node position coolant pressure, temperature, velocity, channel height, and wall thickness
