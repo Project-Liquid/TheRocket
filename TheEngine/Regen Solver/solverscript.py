@@ -6,11 +6,11 @@ import sys
 ''' Define Parameters '''
 def_P0 = 2.758e+6 # [Pa] - first chamber (stagnation) pressure guess 
 def_Ti = 300      # [K] - first chamber inlet temperature guess
-def_P_ci = 5.5e+6 # [Pa] - coolant inlet pressure
+def_P_ci = 4.5e+6 # [Pa] - coolant inlet pressure
 def_X_ci = 0.4 # [-] - coolant inlet quality
 def_x_off = 0.024 # [m] - cooling jacket offset
-def_T_hw = 1200 # [K] - target hot wall temperature (should be below 1373 K)
-def_T_cw = 600 # [K] - target cold wall temperature (should be below 623 K)
+def_T_hw = 1000 # [K] - target hot wall temperature (should be below 1373 K)
+def_T_cw = 530 # [K] - target cold wall temperature (should be below 623 K)
 def_N_channels = 16 # [-] - number of cooling channels
 def_t_rib = 0.005 # [m] thickness of ribs 
 def_k_wall = 30 # [W/mK] - thermal conductivity of wall
@@ -56,7 +56,34 @@ sol.plotCoolantDensity()
 '''
 
 '''Run Special Plots '''
-#iterate over coolant quality from 0 to 0.5 in steps of 0.1
+N_range = 6
+def_ID = "Geometry with varying t_rib:"
+def_t_rib = 0.001
+for i in range(N_range):
+    def_t_rib = 0.001 + 0.001*i
+    sol.defineParameters(def_P0, 
+                         def_Ti, 
+                         def_P_ci, 
+                         def_X_ci, 
+                         def_x_off, 
+                         def_T_hw, 
+                         def_T_cw, 
+                         def_N_channels, 
+                         def_t_rib, 
+                         def_k_wall, 
+                         def_N)
+    T_coolant_f, P_coolant_f = sol.run()
+    #print("Coolant Final Temperature after Cycle ", i+2, ": ", T_coolant_f, " K", "\nCoolant Final Pressure after Cycle ", i+2, ": ", P_coolant_f, " Pa")
+    sol.plotCoolingJacketAxs(axs = sol.plotSubplot6(), ID = def_ID + " {}".format(def_t_rib))
+
+#sol.showSubplot("Velocity with varying X_ci")
+sol.saveSubplot("jacketvst_rib.png")
+sol.resetSubplot()
+
+
+
+
+sys.exit()
 P_drop = list()
 X_ci = list()
 
@@ -98,7 +125,7 @@ plt.legend()
 plt.savefig("solverplots/analysis/pressuredropvsX_ci.png")
 
 
-sys.exit()
+
 #iterate over coolant quality from 0 to 0.5 in steps of 0.1
 
 N_range = 10

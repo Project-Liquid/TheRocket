@@ -1523,6 +1523,19 @@ def plotSubplot(N):
     return axes[subplotcounter - 1]
     # plot 
 
+def plotSubplot6():
+    global subplotfig, axes, subplotcounter
+    if subplotfig is None:
+        subplotfig, axes = plt.subplots(3, 2, figsize = (18, 6 * 3))
+    
+    subplotcounter += 1
+    if subplotcounter < 3:
+        return axes[0, subplotcounter - 1]
+    elif subplotcounter < 5:
+        return axes[1, subplotcounter - 3]
+    else:
+        return axes[2, subplotcounter - 5]
+
 def showSubplot(title = None):
     if title is not None:
         subplotfig.suptitle(title)
