@@ -772,9 +772,12 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
     slope34, intercept34 = np.polyfit(points34x, points34T_hw, 1) # points 3 and 4
 
     # print all linear equations obtained
-    print("T_hw = {}x + {}".format(slope12, intercept12))
-    print("T_hw = {}x + {}".format(slope23, intercept23))
-    print("T_hw = {}x + {}".format(slope34, intercept34))
+    if verbose:
+        print("Result of Hot Wall Temperature Calculation:")
+        print("____________________________________________________")
+        print("T_hw = {}x + {}".format(slope12, intercept12))
+        print("T_hw = {}x + {}".format(slope23, intercept23))
+        print("T_hw = {}x + {}".format(slope34, intercept34))
 
     # get all T_hw values at nodes
     T_hw_n = np.zeros_like(x_n) # hot wall temperature at nodes
@@ -815,9 +818,12 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
     slope34, intercept34 = np.polyfit(points34x, points34T_cw, 1) # points 3 and 4
 
     # print all linear equations obtained
-    print("T_cw = {}x + {}".format(slope12, intercept12))
-    print("T_cw = {}x + {}".format(slope23, intercept23))
-    print("T_cw = {}x + {}".format(slope34, intercept34))
+    if verbose:
+        print("Result of Cold Wall Temperature Calculation:")
+        print("____________________________________________________")
+        print("T_cw = {}x + {}".format(slope12, intercept12))
+        print("T_cw = {}x + {}".format(slope23, intercept23))
+        print("T_cw = {}x + {}".format(slope34, intercept34))
 
     # get all T_cw values at nodes
     T_cw_n = np.zeros_like(x_n) # cold wall temperature at nodes
@@ -1859,8 +1865,9 @@ def exportResultsToExcel():
     T_c = [node.T_c for node in nodesc]
     v_c = [node.v_c for node in nodesc]
     h = [node.h for node in nodesc]
+    w = [node.w for node in nodesc]
     t_w = [node.t_w for node in nodesc]
 
     # make dataframe and save it to excel file
-    df = pd.DataFrame({"Axial Position of Node [m]": x, "Radius at Node [m]": r, "Coolant Pressure [Pa]": P_c, "Coolant Temperature [K]": T_c, "Coolant Velocity [m/s]": v_c, "Channel Height [m]": h, "Wall Thickness [m]": t_w})
+    df = pd.DataFrame({"Axial Position of Node [m]": x, "Radius at Node [m]": r, "Coolant Pressure [Pa]": P_c, "Coolant Temperature [K]": T_c, "Coolant Velocity [m/s]": v_c, "Channel Height [m]": h, "Channel Width [m]": w, "Wall Thickness [m]": t_w})
     df.to_excel("enginefiles/solverdata.xlsx", index = True)
