@@ -20,6 +20,20 @@ def_N = 100 # number of nodes
 def_C_D = 0.7 # [-] - discharge coefficient for coolant flow
 def_A_o = 3.9e-5 # [m^2] - area of injector
 
+# define values for linear temperature profile definition. 
+# Note: these are only used if the linear temperature profile is used
+# define hot wall temperature points for nozzle exit, nozzle throat, and nozzle inlet
+T_hwe = 800  # [K] - nozzle exit temperature
+T_hwt = 1300 # [K] - nozzle throat temperature
+T_hwi = 1100 # [K] - nozzle inlet temperature
+
+# define cold wall temperature for nozzle exit, nozzle throat, and nozzle inlet
+T_cwe = 490  # [K] - nozzle exit temperature
+T_cwt = 600 # [K] - nozzle throat temperature
+T_cwi = 500 # [K] - nozzle inlet temperature
+
+
+# other useful variables
 it_P_chamber = list() # [Pa] - chamber pressure
 it_T_chamber = list() # [K] - chamber temperature
 
@@ -27,8 +41,7 @@ it_T_chamber = list() # [K] - chamber temperature
 ''' Setup '''
 sol.setupDirectories()
 
-''' Run Solver 
-
+''' Define Parameters '''
 sol.defineParameters(def_P0, 
                      def_Ti, 
                      def_P_ci, 
@@ -41,21 +54,39 @@ sol.defineParameters(def_P0,
                      def_k_wall, 
                      def_N)
 
+''' If Needed - Use Linear Temperature Profile'''
+sol.defineLinearTemperature(T_hwe,
+                            T_hwt, 
+                            T_hwi, 
+                            T_cwe, 
+                            T_cwt, 
+                            T_cwi) # automatically converts to using linear temperature profile
+
+''' Run Solver'''
 T_coolant_f, P_coolant_f = sol.run()
-'''
-#print("Coolant Final Temperature after First Cycle: ", T_coolant_f, " K", "\nCoolant Final Pressure after First Cycle: ", P_coolant_f, " Pa")
+
+''' Plot Results '''
+sol.plotCoolantVelocity()
+sol.plotCoolantPressure()
+sol.plotCoolantQuality()
+sol.plotCoolingJacket()
+
+sol.plotHotWallTargets()
+sol.plotColdWallTargets()
+
+''' Export Results '''
+sol.exportResultsToExcel()
+
+
+''' End '''
+sys.exit()
 
 
 ''' Run Results Through Injector 
 _, _, Del_P_SPI = sol.runThroughInjector(def_C_D, def_A_o, verbose = True)
-
-sol.plotCoolantDensity()
-#sol.plotCoolantPressure()
-#sol.plotCoolantQuality()
-#sol.plotCoolingJacket()
 '''
 
-'''Run Special Plots '''
+'''Run Special Plots 
 N_range = 6
 def_ID = "Geometry with varying t_rib:"
 def_t_rib = 0.001
@@ -81,9 +112,6 @@ sol.saveSubplot("jacketvst_rib.png")
 sol.resetSubplot()
 
 
-
-
-sys.exit()
 P_drop = list()
 X_ci = list()
 
@@ -123,61 +151,9 @@ plt.ylabel('Pressure Drop [Pa]')
 plt.grid()
 plt.legend()
 plt.savefig("solverplots/analysis/pressuredropvsX_ci.png")
-
-
-
-#iterate over coolant quality from 0 to 0.5 in steps of 0.1
-
-N_range = 10
-def_ID = "Geometry with varying T_cw:"
-def_T_hw = 1100
-for i in range(N_range):
-    def_T_cw = 600 - i*10
-    sol.defineParameters(def_P0, 
-                         def_Ti, 
-                         def_P_ci, 
-                         def_X_ci, 
-                         def_x_off, 
-                         def_T_hw, 
-                         def_T_cw, 
-                         def_N_channels, 
-                         def_t_rib, 
-                         def_k_wall, 
-                         def_N)
-    T_coolant_f, P_coolant_f = sol.run()
-    #print("Coolant Final Temperature after Cycle ", i+2, ": ", T_coolant_f, " K", "\nCoolant Final Pressure after Cycle ", i+2, ": ", P_coolant_f, " Pa")
-    sol.plotCoolingJacketAxs(axs = sol.plotSubplot(N_range), ID = def_ID + " {}".format(def_T_cw))
-
-#sol.showSubplot("Velocity with varying X_ci")
-sol.saveSubplot("jacketvsT_cw.png")
-sol.resetSubplot()
-#iterate over coolant quality from 0 to 0.5 in steps of 0.1
-
 '''
-N_range = 10
-def_ID = "Pressure with varying X_ci:"
-for i in range(N_range):
-    def_X_ci = i*0.2
-    sol.defineParameters(def_P0, 
-                         def_Ti, 
-                         def_P_ci, 
-                         def_X_ci, 
-                         def_x_off, 
-                         def_T_hw, 
-                         def_T_cw, 
-                         def_N_channels, 
-                         def_t_rib, 
-                         def_k_wall, 
-                         def_N)
-    T_coolant_f, P_coolant_f = sol.run()
-    #print("Coolant Final Temperature after Cycle ", i+2, ": ", T_coolant_f, " K", "\nCoolant Final Pressure after Cycle ", i+2, ": ", P_coolant_f, " Pa")
-    sol.plotCoolantPressureAxs(axs = sol.plotSubplot(N_range), ID = def_ID + " {}".format(def_X_ci))
 
-#sol.showSubplot("Velocity with varying X_ci")
-sol.saveSubplot("pressurevsX_ci.png")
-'''
-sys.exit()
-''' Iterate ''' 
+''' Iterate
 N_iter = 20
 for i in range(N_iter):
     sol.defineParameters(P_coolant_f - Del_P_SPI, 
@@ -204,14 +180,14 @@ for i in range(N_iter):
 
     it_P_chamber.append(P_coolant_f - Del_P_SPI)
     it_T_chamber.append(T_coolant_f)
-    
-''' Plot Results'''
+''' 
+
+''' Plot Iteration Results
 #sol.plotCoolantVelocity()
 sol.plotCoolantPressure()
 sol.plotCoolantQuality()
 #sol.plotCoolingJacket()
 
-''' Additional Plots '''
 # plot chamber pressure and temperature over iterations
 fig = plt.figure(figsize  = (10, 5)) # plot pressure
 plt.plot(range(N_iter), it_P_chamber, 'g', label = 'Chamber Pressure')
@@ -226,4 +202,4 @@ plt.xlabel('Iterations')
 plt.ylabel('Temperature [K]')
 plt.legend()
 plt.show()
-
+'''
