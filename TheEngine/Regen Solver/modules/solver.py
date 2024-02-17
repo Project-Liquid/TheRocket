@@ -472,9 +472,22 @@ def defineParameters(P0, Ti, P_ci, X_ci, x_off, T_hw, T_cw, N_channels, t_rib, k
     def_k_wall = k_wall
     def_N = N
 
+
+USE_LINEAR_TEMP = False
+def defineLinearTemperature(T_hwe, T_hwt, T_hwi, T_cwe, T_cwt, T_cwi):
+    global def_T_hwe, def_T_hwt, def_T_hwi, def_T_cwe, def_T_cwt, def_T_cwi, USE_LINEAR_TEMP
+    def_T_hwe = T_hwe
+    def_T_hwt = T_hwt
+    def_T_hwi = T_hwi
+    def_T_cwe = T_cwe
+    def_T_cwt = T_cwt
+    def_T_cwi = T_cwi
+    
+    USE_LINEAR_TEMP = True
+
 def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, printNodes = False):
     print("Running Solver...\n")
-    global gas, nodes, nodesc, x, r, th, M_coolant, x_n, r_n, o_mdot
+    global gas, nodes, nodesc, x, r, th, M_coolant, x_n, r_n, o_mdot, T_hw_n, T_cw_n
 
     # read geometry csv file to pandas
     df = pd.read_csv("enginefiles/enginegeometry.csv", sep=",")
@@ -742,25 +755,94 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
         print("____________________________________________________")
         print("Number of nodes:", len(nodes), "\nNumber of cooling jacket nodes:", len(nodesc), "\nLast cooling jacket node index:", i_f)
 
+    
+    # interpolate hot wall temperature T_hw(x) at each node
+    # finding x positons for various pairs of points
+    points12x = x[:2] # points 1 and 2
+    points23x = x[1:3] # points 2 and 3
+    points34x = x[2:4] # points 3 and 4
 
-    # define function T(x) to define target temperature of hot wall at each node
-    T_hw_constant = def_T_hw # [K]
-    def T_hw(x):
-        return T_hw_constant # for now, just define a constant temperature
+    points12T_hw = [def_T_hwi, def_T_hwi] # points 1 and 2
+    points23T_hw = [def_T_hwi, def_T_hwt] # points 2 and 3
+    points34T_hw = [def_T_hwt, def_T_hwe] # points 3 and 4
 
-    # populate nodes with target hot wall temperatures
-    for node in nodes:
-        node.set_T_hw(T_hw(node.x))
+    # finding slopes and intercepts for various pairs of points
+    slope12, intercept12 = np.polyfit(points12x, points12T_hw, 1) # points 1 and 2
+    slope23, intercept23 = np.polyfit(points23x, points23T_hw, 1) # points 2 and 3
+    slope34, intercept34 = np.polyfit(points34x, points34T_hw, 1) # points 3 and 4
 
+    # print all linear equations obtained
+    print("T_hw = {}x + {}".format(slope12, intercept12))
+    print("T_hw = {}x + {}".format(slope23, intercept23))
+    print("T_hw = {}x + {}".format(slope34, intercept34))
 
-    # define function T(x) to define target temperature of cold wall at each node
-    T_cw_constant = def_T_cw # [K]
-    def T_cw(x):
-        return T_cw_constant # for now, just define a constant temperature
+    # get all T_hw values at nodes
+    T_hw_n = np.zeros_like(x_n) # hot wall temperature at nodes
+    for i, el in enumerate(x_n):
+        slope = 0
+        # find T_hw_n
+        if el <= x[1]:
+            node_T_hw_n = slope12 * el + intercept12
+            # note: for interval 1-2 slope is 0
+        elif el <= x[2]:
+            node_T_hw_n = slope23 * el + intercept23
+            slope = slope23
+        else:
+            node_T_hw_n = slope34 * el + intercept34
+            slope = slope34
+
+        # set T_hw_n
+        T_hw_n[i] = node_T_hw_n
+
+    for i, node in enumerate(nodes):
+        if USE_LINEAR_TEMP:
+            node.set_T_hw(T_hw_n[i])
+        else:
+            node.set_T_hw(def_T_hw)
+
+    # finding x positons for various pairs of points
+    points12x = x[:2] # points 1 and 2
+    points23x = x[1:3] # points 2 and 3
+    points34x = x[2:4] # points 3 and 4
+
+    points12T_cw = [def_T_cwi, def_T_cwi] # points 1 and 2
+    points23T_cw = [def_T_cwi, def_T_cwt] # points 2 and 3
+    points34T_cw = [def_T_cwt, def_T_cwe] # points 3 and 4
+
+    # finding slopes and intercepts for various pairs of points
+    slope12, intercept12 = np.polyfit(points12x, points12T_cw, 1) # points 1 and 2
+    slope23, intercept23 = np.polyfit(points23x, points23T_cw, 1) # points 2 and 3
+    slope34, intercept34 = np.polyfit(points34x, points34T_cw, 1) # points 3 and 4
+
+    # print all linear equations obtained
+    print("T_cw = {}x + {}".format(slope12, intercept12))
+    print("T_cw = {}x + {}".format(slope23, intercept23))
+    print("T_cw = {}x + {}".format(slope34, intercept34))
+
+    # get all T_cw values at nodes
+    T_cw_n = np.zeros_like(x_n) # cold wall temperature at nodes
+    for i, el in enumerate(x_n):
+        slope = 0
+        # find T_cw_n
+        if el <= x[1]:
+            node_T_cw_n = slope12 * el + intercept12
+            # note: for interval 1-2 slope is 0
+        elif el <= x[2]:
+            node_T_cw_n = slope23 * el + intercept23
+            slope = slope23
+        else:
+            node_T_cw_n = slope34 * el + intercept34
+            slope = slope34
+
+        # set T_cw_n
+        T_cw_n[i] = node_T_cw_n
 
     # populate nodes with target cold wall temperatures
-    for node in nodes:
-        node.set_T_cw(T_cw(node.x))
+    for i, node in enumerate(nodes):
+        if USE_LINEAR_TEMP:
+            node.set_T_cw(T_cw_n[i])
+        else:
+            node.set_T_cw(def_T_cw)
 
 
     # define cooling jacket geometry parameters
@@ -1721,7 +1803,46 @@ def plotAdditionalPropertyResults():
     axs2.set_ylabel("Mach Number [-]", color = "y")
     plt.show()
 
+''' Other Miscaleaneous Plotting '''
+def plotHotWallTargets():
+    # plot extrapolated hot wall temperature T_hw(x) at each node
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    axs.plot(x, r, color = "k") # upper innner wall
+    axs.plot(x, -np.array(r), color = "k") # lower inner wall
+    axs.plot(x, np.add(r, th), color = "k") # upper outer wall
+    axs.plot(x, np.subtract(-np.array(r), th), color = "k") # lower outer wall
+    axs.grid()
+    axs.set_xlabel("Axial Position (m)")
+    axs.set_ylabel("Radius (m)")
+    axs.set_title("Hot Wall Temperature Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "r", linestyle = "--", linewidth = 0.5)
+    axs2.plot(x_n, T_hw_n, color = "r")
+    axs2.set_ylabel("Temperature [K]", color = "r")
+    plt.show()
 
+def plotColdWallTargets():
+    # plot extrapolated cold wall temperature T_cw(x) at each node
+    fig, axs = plt.subplots(figsize = (12, 6))
+    fig.set_facecolor('white')
+    axs.plot(x, r, color = "k") # upper innner wall
+    axs.plot(x, -np.array(r), color = "k") # lower inner wall
+    axs.plot(x, np.add(r, th), color = "k") # upper outer wall
+    axs.plot(x, np.subtract(-np.array(r), th), color = "k") # lower outer wall
+    axs.grid()
+    axs.set_xlabel("Axial Position (m)")
+    axs.set_ylabel("Radius (m)")
+    axs.set_title("Cold Wall Temperature Across Chamber")
+    axs.set_aspect('equal')
+    axs2 = axs.twinx()
+    axs2.grid(color = "b", linestyle = "--", linewidth = 0.5)
+    axs2.plot(x_n, T_cw_n, color = "b")
+    axs2.set_ylabel("Temperature [K]", color = "b")
+    plt.show()
+    
+    
 ''' Exporting Results '''
 def exportResultsToCSV():
     # use pandas t export Mach number, temperature, and pressure data to csv
