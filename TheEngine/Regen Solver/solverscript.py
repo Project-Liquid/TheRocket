@@ -65,6 +65,9 @@ sol.defineLinearTemperature(T_hwe,
 ''' Run Solver'''
 T_coolant_f, P_coolant_f = sol.run()
 
+''' Get OD Results '''
+sol.printODresults()
+
 ''' Plot Results '''
 sol.plotCoolantVelocity()
 sol.plotCoolantPressure()
