@@ -38,7 +38,7 @@ def Iterator(m, area, K, prop, R, h, nodes):
 
 
 def VelocitySolver (n, m, area, prop, R):
-    v_ox_SI[n] = m/(rho_ox_SI[0]*area) #Velocity at this node
+    v_ox_SI[n] = m/(rho_ox_SI[n]*area) #Velocity at this node
     Cp = PropsSI('CPMASS', 'P', P_ox_SI[n], 'Q', x_ox[n], prop)
     Cv = PropsSI('CVMASS', 'P', P_ox_SI[n], 'Q', x_ox[n], prop)
     gamma = Cp/Cv
@@ -47,8 +47,9 @@ def VelocitySolver (n, m, area, prop, R):
 
 
 def Darcy (K, n):
-    dP = K * 0.5 * rho_ox_SI[n] * v_ox_SI[n]**2
-    P_ox_SI[n+1] = P_ox_SI[n] - dP
+
+    dP_node_SI[n] = K * 0.5 * rho_ox_SI[n] * (v_ox_SI[n]**2)
+    P_ox_SI[n+1] = P_ox_SI[n] - dP_node_SI[n]
 
 #Numerical Solver Tweaks
 nodes = 100 #How many times we discretize the tube
@@ -77,12 +78,12 @@ m_ox_SI = m_ox / kg_to_lb
 m_fuel = 0.721 #lb/s
 
 #Line Characteristics: Ox
-L_ox = 10 #ft
+L_ox = 5 #ft
 OD_ox = 0.75 #in
 Thick_ox = 0.0375 #in
-ID_ox = OD_ox - 2*Thick_ox
-Area_ox = (math.pi * ID_ox**2)/4
-Area_ox_SI = Area_ox / m2_to_in2
+ID_ox = OD_ox - 2*Thick_ox #in
+Area_ox = (math.pi * ID_ox**2)/4 #in^2
+Area_ox_SI = Area_ox / m2_to_in2 #m^2
 
 #Line Characteristics: Fuel
 L_fuel = 1 #ft
@@ -117,6 +118,7 @@ T_ox_SI = np.empty(nodes)
 rho_ox_SI = np.empty(nodes)
 v_ox_SI = np.empty(nodes)
 M_ox = np.empty(nodes)
+dP_node_SI = np.empty(nodes)
 
 
 P_ox_SI[0] = P1_ox_init_SI
@@ -136,6 +138,7 @@ P_ox = P_ox_SI / psi_to_Pa
 T_ox = (T_ox_SI - 273.15) * (9./5) + 32
 rho_ox = rho_ox_SI / lb_per_ft3_to_kg_per_m3
 v_ox = v_ox_SI * m_to_ft
+dP_node = dP_node_SI / psi_to_Pa
 
 
 # Graphing

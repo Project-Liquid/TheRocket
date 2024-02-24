@@ -45,7 +45,7 @@ k_alum = 237 #K/W-K
 # Tank Dimensions
 d_outer = 0.1524 #m
 d_inner = 0.1397 #m
-L = 0.25 #m
+L = 0.875 #m
 V_inner = math.pi * d_inner * L #m^3
 
 # Environmental Conditions
@@ -53,7 +53,7 @@ T_air = 266 #K
 T_prop_initial = 266 #K (Starting condition of propellant)
 
 # Heat Input
-Q = 400 #W
+Q = 800 #W
 
 # Propellant State Properties
 cp = 1800 #J/kg-K ... come back to this later
