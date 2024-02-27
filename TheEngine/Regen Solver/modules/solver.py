@@ -772,12 +772,9 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
     slope34, intercept34 = np.polyfit(points34x, points34T_hw, 1) # points 3 and 4
 
     # print all linear equations obtained
-    if verbose:
-        print("Result of Hot Wall Temperature Calculation:")
-        print("____________________________________________________")
-        print("T_hw = {}x + {}".format(slope12, intercept12))
-        print("T_hw = {}x + {}".format(slope23, intercept23))
-        print("T_hw = {}x + {}".format(slope34, intercept34))
+    print("T_hw = {}x + {}".format(slope12, intercept12))
+    print("T_hw = {}x + {}".format(slope23, intercept23))
+    print("T_hw = {}x + {}".format(slope34, intercept34))
 
     # get all T_hw values at nodes
     T_hw_n = np.zeros_like(x_n) # hot wall temperature at nodes
@@ -818,12 +815,9 @@ def run(verbose = False, plotExhaustGases = False, plotCoolingChannels = False, 
     slope34, intercept34 = np.polyfit(points34x, points34T_cw, 1) # points 3 and 4
 
     # print all linear equations obtained
-    if verbose:
-        print("Result of Cold Wall Temperature Calculation:")
-        print("____________________________________________________")
-        print("T_cw = {}x + {}".format(slope12, intercept12))
-        print("T_cw = {}x + {}".format(slope23, intercept23))
-        print("T_cw = {}x + {}".format(slope34, intercept34))
+    print("T_cw = {}x + {}".format(slope12, intercept12))
+    print("T_cw = {}x + {}".format(slope23, intercept23))
+    print("T_cw = {}x + {}".format(slope34, intercept34))
 
     # get all T_cw values at nodes
     T_cw_n = np.zeros_like(x_n) # cold wall temperature at nodes
@@ -1349,26 +1343,6 @@ def runThroughInjector(C_D = 0.7, A_o = 0.0001, verbose = False, useSPI = False)
     
     return mdot_calc_HEM, mdot_calc_SPI, Del_P_SPI
 
-''' Display Outer Wall Considerations '''
-def printODresults(sig_Y = 1100e6, alpha = 2):
-    
-    nodef = nodesc[-1] # final node (node at cylindrical section start)
-    
-    # define variables
-    r = nodef.r + nodef.h # [m] - chamber outer wall radius estimate
-    P = def_P_ci # [Pa] - pressure at chamber outer wall estimate (the pressure at the start of the inlet channels as conservative estimate)
-
-    # set OD max to 6 inches
-    OD_max = 6 * 0.0254 # [m] - maximum outer diameter of chamber
-
-    # calculate outer wall thickness
-    t_o = alpha * P * r / sig_Y # [m] - outer wall thickness
-
-    OD_calc = 2 * (nodef.r + nodef.h + t_o) # [m] - calculated outer diameter of chamber
-
-    print("Calculated outer wall thickness:", t_o * 1000, "[mm]")
-    print("Calculated outer diameter of chamber:", OD_calc * 1000, "[mm]")
-    print("Maximum outer diameter of chamber:", OD_max * 1000, "[mm]")
 
 ''' Individual Plotting '''
 def plot_geometry(axs):
@@ -1885,9 +1859,8 @@ def exportResultsToExcel():
     T_c = [node.T_c for node in nodesc]
     v_c = [node.v_c for node in nodesc]
     h = [node.h for node in nodesc]
-    w = [node.w for node in nodesc]
     t_w = [node.t_w for node in nodesc]
 
     # make dataframe and save it to excel file
-    df = pd.DataFrame({"Axial Position of Node [m]": x, "Radius at Node [m]": r, "Coolant Pressure [Pa]": P_c, "Coolant Temperature [K]": T_c, "Coolant Velocity [m/s]": v_c, "Channel Height [m]": h, "Channel Width [m]": w, "Wall Thickness [m]": t_w})
+    df = pd.DataFrame({"Axial Position of Node [m]": x, "Radius at Node [m]": r, "Coolant Pressure [Pa]": P_c, "Coolant Temperature [K]": T_c, "Coolant Velocity [m/s]": v_c, "Channel Height [m]": h, "Wall Thickness [m]": t_w})
     df.to_excel("enginefiles/solverdata.xlsx", index = True)

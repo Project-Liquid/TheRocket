@@ -13,7 +13,7 @@ def_T_hw = 1000 # [K] - target hot wall temperature (should be below 1373 K)
 def_T_cw = 530 # [K] - target cold wall temperature (should be below 623 K)
 def_N_channels = 16 # [-] - number of cooling channels
 def_t_rib = 0.005 # [m] thickness of ribs 
-def_k_wall = 20 # [W/mK] - thermal conductivity of wall
+def_k_wall = 30 # [W/mK] - thermal conductivity of wall
 def_N = 100 # number of nodes
 
 # define values for injector parameters
@@ -64,9 +64,6 @@ sol.defineLinearTemperature(T_hwe,
 
 ''' Run Solver'''
 T_coolant_f, P_coolant_f = sol.run()
-
-''' Get OD Results '''
-sol.printODresults()
 
 ''' Plot Results '''
 sol.plotCoolantVelocity()
