@@ -6,22 +6,23 @@ Created on Sun Feb 11 12:44:53 2024
 @author: ryansmithers
 """
 
-# System Conditions
-h_air = 25 #W/m^2-K
-h_prop = 72 #W/m^2-K
-T_set_imperial = 20 #F
+# Variable System Conditions
+T_set_imperial = 55 #F
+h_air = 5 #W/m^2-K
+
+# Other Testing Variables
 t_total = 5 #hrs
 T_sustained_imperial = 85 #f
+heater_voltage = 12 #V
 
 # Numerical Thresholds
 threshold = 1 # Percentage error
-time_step = 2 #s
+time_step = 4 #s
 max_iterations = 1000
 
 # Converters
 lb2kg = 0.4536
 in2m = 0.0254
-
 
 # Clear all variables
 import math
@@ -31,7 +32,7 @@ from scipy.interpolate import make_interp_spline
 plt.close('all')
 
 class Bottle:
-    def __init__(self, name, d_outer_imperial, L_imperial, m_prop_imperial, m_bottle_imperial, cp_bottle, cp_prop, Q):
+    def __init__(self, name, d_outer_imperial, L_imperial, m_prop_imperial, m_bottle_imperial, cp_bottle, cp_prop, h_prop, Q):
         self.name = name
         self.d_outer = d_outer_imperial * in2m
         self.L = L_imperial * in2m
@@ -39,9 +40,10 @@ class Bottle:
         self.m_prop = m_prop_imperial *lb2kg
         self.cp_bottle = cp_bottle
         self.cp_prop = cp_prop
+        self.h_prop = h_prop
         self.Q = Q
         self.R_air = R_Conv_Cylinder(self.d_outer, h_air, self.L) #K/W
-        self.R_prop = R_Conv_Cylinder(self.d_outer, h_prop, self.L) #K/W.... using outer diameter
+        self.R_prop = R_Conv_Cylinder(self.d_outer, self.h_prop, self.L) #K/W.... using outer diameter
         self.T_prop_final = self.Q * self.R_air + T_air
         self.Q_sustained = (T_sustained - T_air) / self.R_air
         self.time = 0 #s... time the graph will run to, solved later
@@ -53,8 +55,19 @@ class Bottle:
         self.q_prop = np.zeros(max_iterations) 
         self.q_bottle = np.zeros(max_iterations) 
         
+        # Time Values
+        self.time_rise = float()
+        self.time_sustained = float()
+        
         # Solver
         self.solve_for_temperature()
+        
+        # Amp Hours
+        self.amps = self.Q / heater_voltage
+        self.sustained_amps = self.Q_sustained / heater_voltage # Equivalent amp to sustain
+        self.Ahr_rise = self.time_rise * self.amps
+        self.Ahr_sustained = self.time_sustained * self.sustained_amps
+        self.Ahr = self.Ahr_rise + self.Ahr_sustained
         
         
     def solve_for_temperature(self):
@@ -65,6 +78,9 @@ class Bottle:
         # Preparing Iteration
         n = 0
         error = 100
+        
+        # Threshold
+        threshold = True
         
         while error > threshold and n+1 < max_iterations:
             #Solve for heat flow values
@@ -80,11 +96,19 @@ class Bottle:
             self.T_prop_history[n+1] = self.T_prop_history[n] + dT_prop
             self.T_bottle_history[n+1] = self.T_bottle_history[n] + dT_bottle
             
+            
             # Check Error: Ends on n+1 if condition met
             error = ((self.T_prop_final - self.T_prop_history[n+1]) / self.T_prop_final) * 100
             
             # Iterate Count
             n += 1
+            
+            # Check if threshold hit
+            if threshold == True and self.T_prop_history[n] > T_sustained:
+                print("occured")
+                self.time_rise = float((n * time_step) / 3600) #hrs
+                self.time_sustained = float(t_total - self.time_rise) #hrs
+                threshold = False
         
         # Process Data
         self.time = np.arange(0, time_step * (n+1), time_step)
@@ -164,8 +188,11 @@ T_sustained = f_to_Kelvin(T_sustained_imperial) #K
 T_air = T_prop_initial = T_bottle_initial = T_set #K
 
 # Tank Dimensions
-Ethane = Bottle("Ethane", 4, 16.75, 2, 9, 490, 1800, 200)
-Nitrous = Bottle("Nitrous", 5.25, 16.75, 5, 8.25, 910, 1700, 240)
+Ethane = Bottle("Ethane", 4, 16.75, 2, 9, 490, 1800, 33, 200)
+Nitrous = Bottle("Nitrous", 5.25, 16.75, 5, 8.25, 910, 1700, 72, 240)
+
+# Total Ahr
+Ahr_Total = Ethane.Ahr + Nitrous.Ahr
 
 # Graphs
 Ethane.Grapher()
