@@ -14,7 +14,7 @@ import CoolProp
 from CoolProp.CoolProp import PropsSI
 
 
- 
+
 def Iterator(m, area, K, prop, R, h, nodes):
     n = 0 #Start the iteration at count 0
     
