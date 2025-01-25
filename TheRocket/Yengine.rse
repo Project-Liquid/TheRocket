@@ -1,0 +1,15 @@
+<engine-database>
+  <engine-list>
+    <engine Type="single-use" auto-calc-cg="1" auto-calc-mass="1" code="Yengine" delay="0" 
+    dia="177.8" initWt="17572" len="304.8" mfg="PLiq" propWt="9800">
+      <data>
+        <eng-data f="4280." m="9800" t="0.001" />
+        <eng-data f="3930." m="7840" t="1." />
+        <eng-data f="3580." m="5880" t="2." />
+        <eng-data f="3230." m="3919" t="3." />
+        <eng-data f="2880." m="1959" t="4." />
+        <eng-data f="2530." m="0" t="5." />
+      </data>
+    </engine>
+  </engine-list>
+</engine-database>
