@@ -10,5 +10,5 @@ ispObj = CEA_Obj(oxName = 'N2O', fuelName = 'C2H6', fac_CR = cr)
 PinjOverPcomb = 1.0 + 0.54 / cr**2.2
 
 PinjOverPcomb = ispObj.get_Pinj_over_Pcomb( Pc = (Pinj / PinjOverPcomb), MR=5.0 )
-s = ispObj.get_full_cea_output( Pc = (Pinj / PinjOverPcomb), MR=5.0, eps=40.0)
+s = ispObj.get_full_cea_output( Pc = (Pinj / PinjOverPcomb), MR=5.0, eps=4.3)
 print( s )
