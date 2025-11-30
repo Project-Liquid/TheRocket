@@ -3,12 +3,18 @@
     <engine Type="single-use" auto-calc-cg="1" auto-calc-mass="0" code="YengineRSE" delay="0" 
     dia="177.8" initWt="17572" len="304.8" mfg="PLiq" propWt="9800">
       <data>
-        <eng-data f="4280." m="9800" t="0.001"/>
-        <eng-data f="3930." m="7840" t="1."/>
-        <eng-data f="3580." m="5880" t="2."/>
-        <eng-data f="3230." m="3919" t="3."/>
-        <eng-data f="2880." m="1959" t="4."/>
-        <eng-data f="2530." m="0" t="5."/>
+        <eng-data f="4280." m="21580" t="0.001"/>
+        <eng-data f="4120." m="19620" t="1."/>
+        <eng-data f="3961." m="17660" t="2."/>
+        <eng-data f="3802." m="15700" t="3."/>
+        <eng-data f="3643." m="13740" t="4."/>
+        <eng-data f="3484." m="11780" t="5."/>
+        <eng-data f="3325." m="9820" t="6."/>
+        <eng-data f="3166." m="7860" t="7."/>
+        <eng-data f="3007." m="5900" t="8."/>
+        <eng-data f="2848." m="3940" t="9."/>
+        <eng-data f="2689." m="1980" t="10."/>
+        <eng-data f="2530." m="0" t="11."/>
       </data>
     </engine>
   </engine-list>
