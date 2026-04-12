@@ -3,6 +3,7 @@
 #include "mbv.h"
 #include "loadCell.h"
 #include "heater.h"
+#include "thrustCell.h"
 
 // Run Control
 bool print_data = false;
@@ -48,12 +49,14 @@ MBV EthaneMBV(ETHANE_MBV_PIN, 38, 36);
 MBV NitrousMBV(NITROUS_MBV_PIN, 30, 32);
 
 // Load Cells
-LoadCell EthaneLC1(1, 2, 128);
-LoadCell EthaneLC2(3, 4, 32);
-LoadCell EthaneLC3(5, 6, 128);
-LoadCell NitrousLC1(1, 2, 128);
-LoadCell NitrousLC2(3, 4, 32);
-LoadCell NitrousLC3(5, 6, 128);
+LoadCell EthaneLC1(3, 2);
+LoadCell EthaneLC2(5, 4);
+LoadCell EthaneLC3(7, 6);
+LoadCell NitrousLC1(13, 12);
+LoadCell NitrousLC2(11, 10);
+LoadCell NitrousLC3(9, 8);
+
+ThrustCell ThrustLC();
 
 // Tank Heaters
 bool heaters_active = false;
@@ -216,10 +219,12 @@ void loop()
     
     // ball
     else if (cmd.equalsIgnoreCase("ETHANE_A")) {
-      EthaneMBV.move_90();
+
+
+      EthaneMBV.next_90();
     } 
     else if (cmd.equalsIgnoreCase("ETHANE_S")) {
-      EthaneMBV.move_small();
+      EthaneMBV.move_10();
     } 
     else if (cmd.equalsIgnoreCase("ETHANE_D")) {
       EthaneMBV.move_360();
