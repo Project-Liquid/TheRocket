@@ -14,10 +14,11 @@ const int log_interval_ms = 500;
 const bool full_output = false;
 
 // Pressure Transducers
-const int ETHANE_UPSTREAM_PIN = A8;
-const int ETHANE_DOWNSTREAM_PIN = A9;
-const int NITROUS_UPSTREAM_PIN = A6;
-const int NITROUS_DOWNSTREAM_PIN = A7;
+const int ETHANE_UPSTREAM_PIN = A12;
+const int ETHANE_DOWNSTREAM_PIN = A11;
+const int NITROUS_UPSTREAM_PIN = A10;
+const int NITROUS_DOWNSTREAM_PIN = A8;
+const int REROUTE_PT_PIN = A8;
 const float V_REF = 1.1;
 const float R_SHUNT = 150.0;
 
@@ -29,12 +30,13 @@ Transducer EthaneUpstreamPT(ETHANE_UPSTREAM_PIN, P_MIN, P_MAX_ETHANE);
 Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
 Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
 Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
+Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
 
 // Solenoids
-const int ETHANE_RUN_PIN = 48;
-const int ETHANE_VENT_PIN = 50;
-const int NITROUS_RUN_PIN = 22;
-const int NITROUS_VENT_PIN = 24;
+const int ETHANE_RUN_PIN = 47;
+const int ETHANE_VENT_PIN = 46;
+const int NITROUS_RUN_PIN = 53;
+const int NITROUS_VENT_PIN = 52;
 
 Solenoid EthaneRunValve(ETHANE_RUN_PIN);
 Solenoid EthaneVent(ETHANE_VENT_PIN);
@@ -42,26 +44,26 @@ Solenoid NitrousRunValve(NITROUS_RUN_PIN);
 Solenoid NitrousVent(NITROUS_VENT_PIN);
 
 // Motorized Ball Valves
-const int ETHANE_MBV_PIN = 52;
-const int NITROUS_MBV_PIN = 26;
+const int ETHANE_MBV_PIN = 6;
+const int NITROUS_MBV_PIN = 7;
 
-MBV EthaneMBV(ETHANE_MBV_PIN, 38, 36);
-MBV NitrousMBV(NITROUS_MBV_PIN, 30, 32);
+MBV EthaneMBV(ETHANE_MBV_PIN, 44, 42);
+MBV NitrousMBV(NITROUS_MBV_PIN, 50, 48);
 
 // Load Cells
-LoadCell EthaneLC1(3, 2);
-LoadCell EthaneLC2(5, 4);
-LoadCell EthaneLC3(7, 6);
-LoadCell NitrousLC1(13, 12);
-LoadCell NitrousLC2(11, 10);
-LoadCell NitrousLC3(9, 8);
+LoadCell EthaneLC1(22, 21);
+LoadCell EthaneLC2(24, 23);
+LoadCell EthaneLC3(26, 25);
+LoadCell NitrousLC1(34, 35);
+LoadCell NitrousLC2(32, 33);
+LoadCell NitrousLC3(30, 31);
 
-ThrustCell ThrustLC();
+ThrustCell ThrustLC;
 
 // Tank Heaters
 bool heaters_active = false;
-Heater Heater1(1);
-Heater Heater2(2);
+Heater Heater1(49);
+Heater Heater2(51);
 
 //===========================FUNCTIONS============================//
 void calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3) {
@@ -117,6 +119,15 @@ void setup()
 {
   Serial.begin(9600);
   analogReference(INTERNAL1V1);
+
+  EthaneLC1.setCalFactor(1.0);
+  EthaneLC2.setCalFactor(1.0);
+  EthaneLC3.setCalFactor(1.0);
+  NitrousLC1.setCalFactor(1.0);
+  NitrousLC2.setCalFactor(1.0);
+  NitrousLC3.setCalFactor(1.0);
+
+  ThrustLC.setCalFactor(5.83);
 
   delay(1200);
 

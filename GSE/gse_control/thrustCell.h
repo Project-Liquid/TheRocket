@@ -11,4 +11,5 @@ public:
   ThrustCell();
   long getAverageReading(int samples = 10);
   void calibrate();
+  void setCalFactor(float calFactor);
 };

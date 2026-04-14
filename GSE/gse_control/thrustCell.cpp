@@ -52,3 +52,7 @@ void ThrustCell::calibrate() {
     calibrated = true; // 🔒 lock so it never runs again
   }
 }
+
+void ThrustCell::setCalFactor(float calFactor) {
+  calibrationFactor = calFactor;
+}

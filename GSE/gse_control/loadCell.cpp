@@ -56,6 +56,10 @@ float LoadCell::calibrateCell(float knownWeight) {
   return calFactor;
 }
 
+void LoadCell::setCalFactor(float calFactor) {
+  cal = calFactor;
+}
+
 float LoadCell::read() {
   float raw = getAverage(50);
   float weight_grams = raw / cal;
