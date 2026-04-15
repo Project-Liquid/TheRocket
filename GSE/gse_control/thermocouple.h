@@ -5,12 +5,13 @@
 
 class Thermocouple {
 private:
-  #define I2C_ADDRESS (0x67)
+  int I2C_ADDRESS = 0x67;
   Adafruit_MCP9600 mcp;
   Ambient_Resolution ambientRes = RES_ZERO_POINT_0625;
 
 public:
-  Thermocouple();
+  Thermocouple(int I2C_ADDRESS = 0x67);
+  static float cToF(float c);
   bool checkConnection();
   void setAmbientResolution(Ambient_Resolution res);
   void setThermocoupleType();

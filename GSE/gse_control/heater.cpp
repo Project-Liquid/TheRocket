@@ -1,7 +1,8 @@
 #include "heater.h"
 
-Heater::Heater(int relay_pin) {
+Heater::Heater(int relay_pin, int I2C_ADDRESS) {
   this->relay_pin = relay_pin;
+  this->I2C_ADDRESS = I2C_ADDRESS;
   pinMode(relay_pin, OUTPUT);
   off();
 

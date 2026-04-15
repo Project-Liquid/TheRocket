@@ -2,6 +2,7 @@
 #include "solenoid.h"
 #include "mbv.h"
 #include "loadCell.h"
+#include "thermocouple.h"
 #include "heater.h"
 #include "thrustCell.h"
 
@@ -62,8 +63,11 @@ ThrustCell ThrustLC;
 
 // Tank Heaters
 bool heaters_active = false;
-Heater Heater1(49);
-Heater Heater2(51);
+Heater Heater1(49, 0x66);
+Heater Heater2(51, 0x65);
+
+// Thermocouple
+Thermocouple RerouteTC(0x67);
 
 //===========================FUNCTIONS============================//
 void calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3) {

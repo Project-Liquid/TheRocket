@@ -9,5 +9,5 @@ Do not add any other files to this folder. To add a feature, create a new .cpp a
 ## LIBRARIES TO DOWNLOAD:
 - [HX711](https://github.com/bogde/HX711) Arduino Library by Bogdan Necula
 - [Encoder](https://www.pjrc.com/teensy/td_libs_Encoder.html) by Paul Stoffregen
-- [Adafruit_MCP9600](https://github.com/adafruit/Adafruit_MCP9600)
+- [Adafruit_MCP9600](https://github.com/adafruit/Adafruit_MCP9600) by Adafruit
 - [SparkFun Qwiic Scale NAU7802 Library](https://github.com/sparkfun/SparkFun_Qwiic_Scale_NAU7802_Arduino_Library) by sparkfun

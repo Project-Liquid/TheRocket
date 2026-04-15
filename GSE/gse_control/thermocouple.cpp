@@ -1,9 +1,15 @@
 #include "thermocouple.h"
 
-Thermocouple::Thermocouple() {
-  setAmbientResolution(ambientRes);
+Thermocouple::Thermocouple(int I2C_ADDRESS) {
+  this->I2C_ADDRESS = I2C_ADDRESS;
+  checkConnection();
+  //setAmbientResolution(ambientRes);
   setThermocoupleType();
-  mcp.setFilterCoefficient(3);
+  //mcp.setFilterCoefficient(3);
+}
+
+static float Thermocouple::cToF(float c) {
+  return c * 9.0 / 5.0 + 32.0;
 }
 
 bool Thermocouple::checkConnection() {
@@ -42,11 +48,11 @@ void Thermocouple::setThermocoupleType() {
 }
 
 float Thermocouple::readHot() {
-  return mcp.readThermocouple();
+  return cToF(mcp.readThermocouple());
 }
 
 float Thermocouple::readCold() {
-  return mcp.readAmbient();
+  return cToF(mcp.readAmbient());
 }
 
 float Thermocouple::readADC() {
