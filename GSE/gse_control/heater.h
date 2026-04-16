@@ -15,6 +15,8 @@ private:
 public:
   Heater(int relay_pin, int I2C_ADDRESS = 0x67);
   float cToF(float c);
+  bool isOn();
+  float getTemp();
   void on();
   void off();
   void update();

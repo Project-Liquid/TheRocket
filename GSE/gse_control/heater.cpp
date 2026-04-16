@@ -19,6 +19,17 @@ float Heater::cToF(float c) {
   return c * 9.0 / 5.0 + 32.0;
 }
 
+bool Heater::isOn() {
+  return blanketOn;
+}
+
+float Heater::getTemp() {
+  float hotC = mcp.readThermocouple();
+  //float coldC = mcp.readAmbient();
+  float hotF = cToF(hotC);
+  return hotF;
+}
+
 void Heater::on() {
   digitalWrite(relay_pin, HIGH);
   blanketOn = true;
@@ -30,9 +41,7 @@ void Heater::off() {
 }
 
 void Heater::update() {
-  float hotC = mcp.readThermocouple();
-  float coldC = mcp.readAmbient();
-  float hotF = cToF(hotC);
+  float hotF = getTemp();
   // Hysteresis control
   if (!blanketOn && hotF < ON_THRESHOLD_F) {
     on();

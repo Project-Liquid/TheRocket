@@ -12,5 +12,5 @@ public:
   float getAverage(int samples = 100);
   float calibrateCell(float knownWeight);
   void setCalFactor(float calFactor);
-  float read();
+  float read(int samples = 50);
 };

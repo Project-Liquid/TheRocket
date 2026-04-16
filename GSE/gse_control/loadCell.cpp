@@ -60,8 +60,8 @@ void LoadCell::setCalFactor(float calFactor) {
   cal = calFactor;
 }
 
-float LoadCell::read() {
-  float raw = getAverage(50);
+float LoadCell::read(int samples) {
+  float raw = getAverage(samples);
   float weight_grams = raw / cal;
   float weight_lbs = weight_grams / 453.592;
   return weight_lbs;
