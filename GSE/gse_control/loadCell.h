@@ -13,4 +13,5 @@ public:
   float calibrateCell(float knownWeight);
   void setCalFactor(float calFactor);
   float read(int samples = 50);
+  static void LoadCell::calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3);
 };

@@ -66,3 +66,43 @@ float LoadCell::read(int samples) {
   float weight_lbs = weight_grams / 453.592;
   return weight_lbs;
 }
+
+static void LoadCell::calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3) {
+  static int step = 1;
+  if (Serial.available() > 0) {
+
+    float knownWeight = Serial.parseFloat();
+
+    while (Serial.available()) Serial.read();
+
+    if (knownWeight <= 0) {
+      Serial.println("Invalid weight. Try again.");
+      return;
+    }
+
+    if (step == 1) {
+      float cal1 = scale1.calibrateCell(knownWeight);
+
+      Serial.println("\nMove SAME weight to Load Cell 2.");
+      Serial.println("Enter weight again:");
+      step = 2;
+    }
+
+    else if (step == 2) {
+      float cal2 = scale2.calibrateCell(knownWeight);
+
+      Serial.println("\nMove SAME weight to Load Cell 3.");
+      Serial.println("Enter weight again:");
+      step = 3;
+    }
+
+    else if (step == 3) {
+      float cal3 = scale3.calibrateCell(knownWeight);
+
+      Serial.println("\n=== CALIBRATION COMPLETE ===");
+      Serial.println("Record these 3 calibration factors.");
+
+      //while (1); // stop forever
+    }
+  }
+}

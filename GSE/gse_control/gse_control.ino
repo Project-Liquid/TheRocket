@@ -70,45 +70,6 @@ Thermocouple RerouteTC(0x67);
 
 
 //===========================FUNCTIONS============================//
-void calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3) {
-  static int step = 1;
-  if (Serial.available() > 0) {
-
-    float knownWeight = Serial.parseFloat();
-
-    while (Serial.available()) Serial.read();
-
-    if (knownWeight <= 0) {
-      Serial.println("Invalid weight. Try again.");
-      return;
-    }
-
-    if (step == 1) {
-      float cal1 = scale1.calibrateCell(knownWeight);
-
-      Serial.println("\nMove SAME weight to Load Cell 2.");
-      Serial.println("Enter weight again:");
-      step = 2;
-    }
-
-    else if (step == 2) {
-      float cal2 = scale2.calibrateCell(knownWeight);
-
-      Serial.println("\nMove SAME weight to Load Cell 3.");
-      Serial.println("Enter weight again:");
-      step = 3;
-    }
-
-    else if (step == 3) {
-      float cal3 = scale3.calibrateCell(knownWeight);
-
-      Serial.println("\n=== CALIBRATION COMPLETE ===");
-      Serial.println("Record these 3 calibration factors.");
-
-      //while (1); // stop forever
-    }
-  }
-}
 
 float readEthaneLC() {
   return EthaneLC1.read() + EthaneLC2.read() + EthaneLC3.read();
@@ -133,7 +94,7 @@ void setup()
   NitrousLC2.setCalFactor(1.0);
   NitrousLC3.setCalFactor(1.0);
 
-  //ThrustLC.setCalFactor(5.83);
+  // ThrustLC.setCalFactor(5.83);
   
   delay(1200);
 
@@ -183,6 +144,8 @@ void loop()
       // Serial.print("\tLC3: "); Serial.print(NitrousLC3.read(1)); 
       // Serial.print("\tTotal: "); Serial.print(readNitrousLC());
       Serial.println();
+      // Serial.print("Thrust: "); Serial.print(ThrustLC.getAverageReading(1));
+      // Serial.println();
       // Tank Heaters
       // Serial.print("Tank 1: "); 
       // Serial.print(Heater1.getTemp()); Serial.print("F -- "); 
