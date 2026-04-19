@@ -8,7 +8,8 @@ private:
   long current_position;
   bool moving;
   long move_start_ms;
-  Encoder* enc = nullptr;
+  Encoder enc;
+  //Encoder enc2();
 
   const int MOTOR_FAST = 255;
   const int MOTOR_SLOW = 215;
@@ -25,8 +26,6 @@ private:
 public:
   MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2);
   bool next_90();
-  bool move_10();
-  bool move_360();
   bool move_degrees(float degrees);
   void reset();
   void update();
