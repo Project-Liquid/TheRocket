@@ -73,11 +73,11 @@ LoadCell* NitrousLC3;
 //===========================FUNCTIONS============================//
 
 float readEthaneLC() {
-  return EthaneLC1->read() + EthaneLC2->read() + EthaneLC3->read();
+  return EthaneLC1->read(1) + EthaneLC2->read(1) + EthaneLC3->read(1);
 }
 
 float readNitrousLC() {
-  return NitrousLC1->read() + NitrousLC2->read() + NitrousLC3->read();
+  return NitrousLC1->read(1) + NitrousLC2->read(1) + NitrousLC3->read(1);
 }
 
 void status() {
@@ -98,15 +98,15 @@ void status() {
   // Load Cells
   Serial.print("Ethane: \t");
   Serial.print("LC1: "); Serial.print(EthaneLC1->read(1)); 
-  Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1)); 
+  Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1));
   Serial.print("\tLC3: "); Serial.print(EthaneLC3->read(1)); 
   // Serial.print("\tTotal: "); Serial.print(readEthaneLC());
   Serial.println();
-  // Serial.print("Nitrous: \t");
-  // Serial.print("LC1: "); Serial.print(NitrousLC1.read(1)); 
-  // Serial.print("\tLC2: "); Serial.print(NitrousLC2.read(1)); 
-  // Serial.print("\tLC3: "); Serial.print(NitrousLC3.read(1)); 
-  // Serial.print("\tTotal: "); Serial.print(readNitrousLC());
+  Serial.print("Nitrous: \t");
+  Serial.print("LC1: "); Serial.print(NitrousLC1->read(1)); 
+  Serial.print("\tLC2: "); Serial.print(NitrousLC2->read(1)); 
+  Serial.print("\tLC3: "); Serial.print(NitrousLC3->read(1)); 
+  Serial.print("\tTotal: "); Serial.print(readNitrousLC());
   Serial.println();
   // Serial.print("Thrust: "); Serial.print(ThrustLC->getAverageReading(1));
   // Serial.println();
@@ -142,12 +142,12 @@ void setup()
   NitrousLC2 = new LoadCell(32, 33);
   NitrousLC3 = new LoadCell(30, 31);
 
-  EthaneLC1->setCalFactor(1.0);
-  EthaneLC2->setCalFactor(1.0);
-  EthaneLC3->setCalFactor(1.0);
-  NitrousLC1->setCalFactor(1.0);
-  NitrousLC2->setCalFactor(1.0);
-  NitrousLC3->setCalFactor(1.0);
+  EthaneLC1->setCalFactor(39.32);
+  EthaneLC2->setCalFactor(43.89);
+  EthaneLC3->setCalFactor(47.28);
+  NitrousLC1->setCalFactor(40.0);
+  NitrousLC2->setCalFactor(60.0);
+  NitrousLC3->setCalFactor(60.0);
 
   // ThrustLC = new ThrustCell();
   // ThrustLC->setCalFactor(5.83);
