@@ -8,10 +8,13 @@ private:
   NAU7802 scale;
   float calibrationFactor = 1.0;
   bool calibrated = false;
+  int offset = 0;
 
 public:
   ThrustCell();
   long getAverageReading(int samples = 10);
+  double read(int samples = 1);
   void calibrate();
+  void tare();
   void setCalFactor(float calFactor);
 };

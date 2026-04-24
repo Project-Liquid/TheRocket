@@ -7,6 +7,11 @@ ThrustCell::ThrustCell() {
     Serial.println("NAU7802 not found!");
     while (1);
   }
+  tare();
+}
+
+void ThrustCell::tare() {
+  offset = getAverageReading(10);
 }
 
 long ThrustCell::getAverageReading(int samples) {
@@ -18,6 +23,12 @@ long ThrustCell::getAverageReading(int samples) {
   }
 
   return sum / samples;
+}
+
+double ThrustCell::read(int samples) {
+  double force_grams = (getAverageReading(samples) - offset) / calibrationFactor;
+  double force_lbs = force_grams / 453.592;
+  return force_lbs;
 }
 
 void ThrustCell::calibrate() {

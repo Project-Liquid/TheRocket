@@ -59,7 +59,7 @@ LoadCell* NitrousLC1;
 LoadCell* NitrousLC2;
 LoadCell* NitrousLC3;
 
-// ThrustCell* ThrustLC;
+ThrustCell* ThrustLC;
 
 // Tank Heaters
 // bool heaters_active = false;
@@ -95,12 +95,14 @@ void status() {
   NitrousUpstreamPT.status();
   Serial.print("Nitrous Downstream: \t");
   NitrousDownstreamPT.status();
+  Serial.print("Reroute: \t");
+  ReroutePT.status();
   // Load Cells
   Serial.print("Ethane: \t");
   Serial.print("LC1: "); Serial.print(EthaneLC1->read(1)); 
   Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1));
   Serial.print("\tLC3: "); Serial.print(EthaneLC3->read(1)); 
-  // Serial.print("\tTotal: "); Serial.print(readEthaneLC());
+  Serial.print("\tTotal: "); Serial.print(readEthaneLC());
   Serial.println();
   Serial.print("Nitrous: \t");
   Serial.print("LC1: "); Serial.print(NitrousLC1->read(1)); 
@@ -108,10 +110,10 @@ void status() {
   Serial.print("\tLC3: "); Serial.print(NitrousLC3->read(1)); 
   Serial.print("\tTotal: "); Serial.print(readNitrousLC());
   Serial.println();
-  // Serial.print("Thrust: "); Serial.print(ThrustLC->getAverageReading(1));
+  Serial.print("Thrust: "); Serial.print(ThrustLC->read());
   // Serial.println();
   // Tank Heaters
-  // Serial.print("Tank 1: "); 
+  Serial.print("Tank 1: "); 
   // Serial.print(Heater1->getTemp()); Serial.print("F -- "); 
   // Serial.println(Heater1->isOn() ? "ON" : "OFF");
   // Serial.print("Tank 2: "); 
@@ -135,22 +137,22 @@ void setup()
   EthaneMBV = new MBV(ETHANE_MBV_PIN, 42, 44);
   NitrousMBV = new MBV(NITROUS_MBV_PIN, 50, 48);
 
-  EthaneLC1 = new LoadCell(24, 23);
-  EthaneLC2 = new LoadCell(22, 21);
-  EthaneLC3 = new LoadCell(26, 25);
+  EthaneLC1 = new LoadCell(22, 23);
+  EthaneLC2 = new LoadCell(24, 25);
+  EthaneLC3 = new LoadCell(26, 27);
   NitrousLC1 = new LoadCell(34, 35);
   NitrousLC2 = new LoadCell(32, 33);
   NitrousLC3 = new LoadCell(30, 31);
 
-  EthaneLC1->setCalFactor(39.32);
-  EthaneLC2->setCalFactor(43.89);
-  EthaneLC3->setCalFactor(47.28);
+  EthaneLC1->setCalFactor(43.27);
+  EthaneLC2->setCalFactor(43.92);
+  EthaneLC3->setCalFactor(42.46);
   NitrousLC1->setCalFactor(40.0);
-  NitrousLC2->setCalFactor(60.0);
-  NitrousLC3->setCalFactor(60.0);
+  NitrousLC2->setCalFactor(40.0);
+  NitrousLC3->setCalFactor(40.0);
 
-  // ThrustLC = new ThrustCell();
-  // ThrustLC->setCalFactor(5.83);
+  ThrustLC = new ThrustCell();
+  ThrustLC->setCalFactor(-5.83);
 
   // RerouteTC = new Thermocouple(0x67);
 
@@ -287,8 +289,8 @@ void loop()
   NitrousMBV->update();
 
   // if(heaters_active) {
-  //   Heater1->update();
-  //   Heater2->update();
+  //   // Heater1->update();
+  //   // Heater2->update();
   // }
 
   delay(20);

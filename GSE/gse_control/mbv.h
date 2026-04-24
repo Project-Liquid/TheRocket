@@ -9,7 +9,6 @@ private:
   bool moving;
   long move_start_ms;
   Encoder enc;
-  //Encoder enc2();
 
   const int MOTOR_FAST = 255;
   const int MOTOR_SLOW = 215;
@@ -18,10 +17,10 @@ private:
   const int TIMEOUT_MS = 3000;
   const int SKIP_ZONE = 50;
 
-  static const long counts_per_motor_rev = 751.8;
-  static const long gear_ratio = (30.0 / 14.0);
-  static const long counts_per_degree = (counts_per_motor_rev * gear_ratio) / 360.0;
-  static const long counts_per_90 = (long)(90 * counts_per_degree);
+  const float counts_per_motor_rev = 751.8;
+  const float gear_ratio = (30.0 / 14.0);
+  const float counts_per_degree = (counts_per_motor_rev * gear_ratio) / 360.0;
+  const float counts_per_90 = (long)(90 * counts_per_degree);
 
 public:
   MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2);
