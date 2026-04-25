@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Wire.h>
 // #include <Adafruit_I2CDevice.h>
 // #include <Adafruit_I2CRegister.h>

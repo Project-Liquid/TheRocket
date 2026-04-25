@@ -5,7 +5,6 @@
 #include "thermocouple.h"
 #include "heater.h"
 #include "thrustCell.h"
-//#include <string>
 
 // Run Control
 bool print_data = false;
@@ -24,8 +23,8 @@ const int NITROUS_DOWNSTREAM_PIN = A9;
 const int REROUTE_PT_PIN = A8;
 
 const float P_MIN = 0.0;
-const float P_MAX_ETHANE = 1000;//68.9;
-const float P_MAX_NITROUS = 1500;//103.4214;
+const float P_MAX_ETHANE = 1000;
+const float P_MAX_NITROUS = 1500;
 
 Transducer EthaneUpstreamPT(ETHANE_UPSTREAM_PIN, P_MIN, P_MAX_ETHANE);
 Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
@@ -62,9 +61,11 @@ LoadCell* NitrousLC3;
 ThrustCell* ThrustLC;
 
 // Tank Heaters
-// bool heaters_active = false;
-// Heater* Heater1;
-// Heater* Heater2;
+bool heaters_active = false;
+Heater* EthaneHeater1;
+Heater* EthaneHeater2;
+Heater* NitrousHeater1;
+Heater* NitrousHeater2;
 
 // Thermocouple
 // Thermocouple* RerouteTC;
@@ -80,49 +81,67 @@ float readNitrousLC() {
   return NitrousLC1->read(1) + NitrousLC2->read(1) + NitrousLC3->read(1);
 }
 
-void status() {
+void status(bool verbose = true) {
   elapsed = millis()-start_time;
 
-  Serial.println("====================");
-  // Time
-  Serial.print(elapsed/1000.0); Serial.println("s");
-  // PTs
-  Serial.print("Ethane Upstream: \t");
-  EthaneUpstreamPT.status();
-  Serial.print("Ethane Downstream: \t");
-  EthaneDownstreamPT.status();
-  Serial.print("Nitrous Upstream: \t");
-  NitrousUpstreamPT.status();
-  Serial.print("Nitrous Downstream: \t");
-  NitrousDownstreamPT.status();
-  Serial.print("Reroute: \t");
-  ReroutePT.status();
-  // Load Cells
-  Serial.print("Ethane: \t");
-  Serial.print("LC1: "); Serial.print(EthaneLC1->read(1)); 
-  Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1));
-  Serial.print("\tLC3: "); Serial.print(EthaneLC3->read(1)); 
-  Serial.print("\tTotal: "); Serial.print(readEthaneLC());
-  Serial.println();
-  Serial.print("Nitrous: \t");
-  Serial.print("LC1: "); Serial.print(NitrousLC1->read(1)); 
-  Serial.print("\tLC2: "); Serial.print(NitrousLC2->read(1)); 
-  Serial.print("\tLC3: "); Serial.print(NitrousLC3->read(1)); 
-  Serial.print("\tTotal: "); Serial.print(readNitrousLC());
-  Serial.println();
-  Serial.print("Thrust: "); Serial.print(ThrustLC->read());
-  // Serial.println();
-  // Tank Heaters
-  Serial.print("Tank 1: "); 
-  // Serial.print(Heater1->getTemp()); Serial.print("F -- "); 
-  // Serial.println(Heater1->isOn() ? "ON" : "OFF");
-  // Serial.print("Tank 2: "); 
-  // Serial.print(Heater2->getTemp()); Serial.print("F -- "); 
-  // Serial.println(Heater2->isOn() ? "ON" : "OFF");
-  // Thermocouple
-  //Serial.print("Reroute TC: ");
-  //Serial.print(RerouteTC->readHot()); Serial.print("F");
-  Serial.println();
+  if (verbose) {  // Full diagnostic output
+    Serial.println("====================");
+    // Time
+    Serial.print(elapsed/1000.0); Serial.println("s");
+    // PTs
+    Serial.print("Ethane Upstream: \t");
+    EthaneUpstreamPT.status();
+    Serial.print("Ethane Downstream: \t");
+    EthaneDownstreamPT.status();
+    Serial.print("Nitrous Upstream: \t");
+    NitrousUpstreamPT.status();
+    Serial.print("Nitrous Downstream: \t");
+    NitrousDownstreamPT.status();
+    Serial.print("Reroute: \t");
+    ReroutePT.status();
+    // Load Cells
+    Serial.print("Ethane: \t");
+    Serial.print("LC1: "); Serial.print(EthaneLC1->read(1)); 
+    Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1));
+    Serial.print("\tLC3: "); Serial.print(EthaneLC3->read(1)); 
+    Serial.print("\tTotal: "); Serial.print(readEthaneLC());
+    Serial.println();
+    Serial.print("Nitrous: \t");
+    Serial.print("LC1: "); Serial.print(NitrousLC1->read(1)); 
+    Serial.print("\tLC2: "); Serial.print(NitrousLC2->read(1)); 
+    Serial.print("\tLC3: "); Serial.print(NitrousLC3->read(1)); 
+    Serial.print("\tTotal: "); Serial.print(readNitrousLC());
+    Serial.println();
+    Serial.print("Thrust: "); Serial.print(ThrustLC->read());
+    Serial.println();
+    // Serial.println();
+    // Tank Heaters
+    Serial.print("Ethane Tank 1: "); 
+    Serial.println(EthaneHeater1->isOn() ? "ON" : "OFF");
+    Serial.print("Nitrous Tank 1: "); 
+    Serial.println(NitrousHeater1->isOn() ? "ON" : "OFF");
+    // Thermocouple
+    //Serial.print("Reroute TC: ");
+    //Serial.print(RerouteTC->readHot()); Serial.print("F");
+    Serial.println();
+  } else { // Simplified output for log
+    Serial.print(elapsed/1000.0);
+    Serial.print(", ");
+    EthaneUpstreamPT.value();
+    Serial.print(", ");
+    EthaneDownstreamPT.value();
+    Serial.print(", ");
+    NitrousUpstreamPT.value();
+    Serial.print(", ");
+    NitrousDownstreamPT.value();
+    Serial.print(", ");
+    Serial.print(readEthaneLC());
+    Serial.print(", ");
+    Serial.print(readNitrousLC());
+    Serial.print(", ");
+    Serial.print(ThrustLC->read());
+    Serial.println();
+  }
 }
 
 //===========================EXECUTION============================//
@@ -156,8 +175,10 @@ void setup()
 
   // RerouteTC = new Thermocouple(0x67);
 
-  // Heater1 = new Heater(49, 0x66);
-  // Heater2 = new Heater(51, 0x65);
+  EthaneHeater1 = new Heater(49, &EthaneUpstreamPT);
+  EthaneHeater2 = new Heater(51, &EthaneUpstreamPT);
+  NitrousHeater1 = new Heater(49, &NitrousUpstreamPT);
+  NitrousHeater2 = new Heater(51, &NitrousUpstreamPT);
   
   delay(1200);
 
@@ -181,26 +202,7 @@ void loop()
   if (millis() - lastPressureMs >= log_interval_ms && print_data)
   {
     lastPressureMs += log_interval_ms;
-    if(full_output) {
-      status();
-    } else {
-      Serial.print(elapsed/1000.0);
-      Serial.print(", ");
-      EthaneUpstreamPT.value();
-      Serial.print(", ");
-      EthaneDownstreamPT.value();
-      Serial.print(", ");
-      NitrousUpstreamPT.value();
-      Serial.print(", ");
-      NitrousDownstreamPT.value();
-      Serial.print(", ");
-      Serial.print(EthaneLC1->read(1));
-      Serial.print(", ");
-      Serial.print(EthaneLC2->read(1));
-      Serial.print(", ");
-      Serial.print(EthaneLC3->read(1));
-      Serial.println();
-    }
+    status(full_output);
   }
 
   if (elapsed/1000.0 > runtime && runtime >= 0) {
@@ -288,10 +290,12 @@ void loop()
   EthaneMBV->update();
   NitrousMBV->update();
 
-  // if(heaters_active) {
-  //   // Heater1->update();
-  //   // Heater2->update();
-  // }
+  if(heaters_active) {
+    EthaneHeater1->update();
+    EthaneHeater2->update();
+    NitrousHeater1->update();
+    NitrousHeater2->update();
+  }
 
   delay(20);
 }

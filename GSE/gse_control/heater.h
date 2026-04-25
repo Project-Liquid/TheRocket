@@ -1,22 +1,19 @@
-#include <Wire.h>
-#include <Adafruit_MCP9601.h>
+#pragma once
 
-//#define I2C_ADDRESS 0x67
+#include "transducer.h"
 
 class Heater {
 private:
   int relay_pin;
-  int I2C_ADDRESS;
+  Transducer* PT;
   bool blanketOn = false;
-  Adafruit_MCP9601 mcp;
-  const float ON_THRESHOLD_F = 120.5;
-  const float OFF_THRESHOLD_F = 121.5;
+  float target_pressure;
+  float threshold_error;
 
 public:
-  Heater(int relay_pin, int I2C_ADDRESS = 0x67);
-  float cToF(float c);
+  Heater(int relay_pin, Transducer* PT);
+  void setTarget(float target, float threshold_error = 10);
   bool isOn();
-  float getTemp();
   void on();
   void off();
   void update();
