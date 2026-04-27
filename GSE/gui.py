@@ -11,7 +11,7 @@ import serial.tools.list_ports
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QPushButton, QComboBox, QSpinBox,
-    QGroupBox, QSizePolicy, QFileDialog, QMessageBox, QFrame
+    QGroupBox, QSizePolicy, QFileDialog, QMessageBox, QFrame, QTextEdit
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt5.QtGui import QFont, QColor, QPalette
@@ -24,6 +24,7 @@ import pyqtgraph as pg
 # ─────────────────────────────────────────
 class SerialWorker(QObject):
     data_received = pyqtSignal(dict)
+    raw_received = pyqtSignal(str)  # Raw serial line for monitor
     connection_lost = pyqtSignal()
 
     def __init__(self, port, baud=9600):
@@ -49,6 +50,7 @@ class SerialWorker(QObject):
                     parsed = self._parse(raw)
                     if parsed:
                         self.data_received.emit(parsed)
+                    self.raw_received.emit(raw)  # Emit raw line for monitor
             except (serial.SerialException, OSError):
                 self.connection_lost.emit()
                 break
@@ -183,6 +185,9 @@ class GroundStation(QMainWindow):
         self.log_rows = []
         self.logging_active = False
 
+        # Serial monitor
+        self.serial_monitor_lines = deque(maxlen=500)
+
         self._build_ui()
 
     # ── UI Construction ──────────────────────────────────────────
@@ -209,6 +214,7 @@ class GroundStation(QMainWindow):
         right.addWidget(self._build_valve_group())
         right.addWidget(self._build_cold_flow_group())
         right.addWidget(self._build_export_group())
+        right.addWidget(self._build_serial_monitor_group())
         right.addStretch()
 
         content.addLayout(left, 3)
@@ -381,6 +387,28 @@ class GroundStation(QMainWindow):
         layout.addWidget(self.log_count_lbl)
         return grp
 
+    def _build_serial_monitor_group(self):
+        grp = QGroupBox("SERIAL MONITOR")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+
+        self.serial_monitor = QTextEdit()
+        self.serial_monitor.setReadOnly(True)
+        self.serial_monitor.setFont(QFont("Courier New", 8))
+        self.serial_monitor.setStyleSheet(
+            "background:#0d1117; color:#58a6ff; border:1px solid #30363d; border-radius:4px;"
+        )
+        self.serial_monitor.setMinimumHeight(150)
+
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFixedHeight(28)
+        clear_btn.setFont(QFont("Courier New", 8))
+        clear_btn.clicked.connect(self.serial_monitor.clear)
+
+        layout.addWidget(self.serial_monitor)
+        layout.addWidget(clear_btn)
+        return grp
+
     def _build_chart_group(self):
         grp = QGroupBox("LIVE DATA")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
@@ -430,6 +458,7 @@ class GroundStation(QMainWindow):
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.start)
         self.worker.data_received.connect(self._on_data)
+        self.worker.raw_received.connect(self._on_raw_data)
         self.worker.connection_lost.connect(self._disconnect)
         self.send_fn = self.worker.send
         self.thread.start()
@@ -450,29 +479,30 @@ class GroundStation(QMainWindow):
         self.connect_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
         self.status_lbl.setText("● Disconnected")
         self.status_lbl.setStyleSheet("color:#ff4466;")
+        self.serial_monitor.clear()
 
     # ── Data Handler ──────────────────────────────────────────────
     def _on_data(self, state: dict):
         t = state.get('millis', 0) / 1000.0
 
         # PT readouts
-        et_up  = state.get('ET_UP',  0.0)
-        et_dn  = state.get('ET_DN',  0.0)
-        nit_up = state.get('NIT_UP', 0.0)
-        nit_dn = state.get('NIT_DN', 0.0)
+        et_up  = state.get('PT_EU',  0.0)
+        et_dn  = state.get('PT_ED',  0.0)
+        nit_up = state.get('PT_NU', 0.0)
+        nit_dn = state.get('PT_ND', 0.0)
         self.pt_et_up.update_value(et_up)
         self.pt_et_dn.update_value(et_dn)
         self.pt_nit_up.update_value(nit_up)
         self.pt_nit_dn.update_value(nit_dn)
 
         # LC readouts
-        lc1 = state.get('LC1', 0.0)
-        lc2 = state.get('LC2', 0.0)
-        lc3 = state.get('LC3', 0.0)
+        lc1 = state.get('LC_E1', 0.0)
+        lc2 = state.get('LC_E2', 0.0)
+        lc3 = state.get('LC_E3', 0.0)
         et_total = lc1 + lc2 + lc3
-        n1  = state.get('NLC1', 0.0)
-        n2  = state.get('NLC2', 0.0)
-        n3  = state.get('NLC3', 0.0)
+        n1  = state.get('LC_N1', 0.0)
+        n2  = state.get('LC_N2', 0.0)
+        n3  = state.get('LC_N3', 0.0)
         nit_total = n1 + n2 + n3
         self.lc_e1.update_value(lc1)
         self.lc_e2.update_value(lc2)
@@ -515,6 +545,14 @@ class GroundStation(QMainWindow):
                 'NRV': state.get('NRV',0), 'NV': state.get('NV',0),
             })
             self.log_count_lbl.setText(f"{len(self.log_rows)} rows logged")
+
+    def _on_raw_data(self, raw: str):
+        """Append raw serial line to monitor."""
+        self.serial_monitor.append(raw)
+        # Auto-scroll to bottom
+        self.serial_monitor.verticalScrollBar().setValue(
+            self.serial_monitor.verticalScrollBar().maximum()
+        )
 
     # ── Controls ──────────────────────────────────────────────────
     def _emergency_stop(self):

@@ -12,7 +12,7 @@ long start_time = 1410065408; // max value placeholder
 static unsigned long lastPressureMs = 0;
 const int runtime = (10*60) + 8;
 const int log_interval_ms = 500;
-const bool full_output = true;
+const bool full_output = false;
 long elapsed = 0;
 
 // Pressure Transducers
@@ -125,21 +125,32 @@ void status(bool verbose = true) {
     //Serial.print(RerouteTC->readHot()); Serial.print("F");
     Serial.println();
   } else { // Simplified output for log
+    // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
+    Serial.print("DATA|");
     Serial.print(elapsed/1000.0);
-    Serial.print(", ");
+    Serial.print("|PT_EU:");
     EthaneUpstreamPT.value();
-    Serial.print(", ");
+    Serial.print("|PT_ED:");
     EthaneDownstreamPT.value();
-    Serial.print(", ");
+    Serial.print("|PT_NU:");
     NitrousUpstreamPT.value();
-    Serial.print(", ");
+    Serial.print("|PT_ND:");
     NitrousDownstreamPT.value();
-    Serial.print(", ");
-    Serial.print(readEthaneLC());
-    Serial.print(", ");
-    Serial.print(readNitrousLC());
-    Serial.print(", ");
+    Serial.print("|LC_E1:");
+    Serial.print(EthaneLC1->read(1));
+    Serial.print("|LC_E2:");
+    Serial.print(EthaneLC2->read(1));
+    Serial.print("|LC_E3:");
+    Serial.print(EthaneLC3->read(1));
+    Serial.print("|LC_N1:");
+    Serial.print(NitrousLC1->read(1));
+    Serial.print("|LC_N2:");
+    Serial.print(NitrousLC2->read(1));
+    Serial.print("|LC_N3:");
+    Serial.print(NitrousLC3->read(1));
+    Serial.print("|LC_T:");
     Serial.print(ThrustLC->read());
+    //Serial.print("|");
     Serial.println();
   }
 }
@@ -147,7 +158,7 @@ void status(bool verbose = true) {
 //===========================EXECUTION============================//
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(57600);
   Serial.flush();
   Serial.println("START");
   delay(2000);
