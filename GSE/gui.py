@@ -27,7 +27,7 @@ class SerialWorker(QObject):
     raw_received = pyqtSignal(str)  # Raw serial line for monitor
     connection_lost = pyqtSignal()
 
-    def __init__(self, port, baud=9600):
+    def __init__(self, port, baud=57600):
         super().__init__()
         self.port = port
         self.baud = baud
@@ -45,7 +45,8 @@ class SerialWorker(QObject):
 
         while self._running:
             try:
-                raw = self.ser.readline().decode('utf-8', errors='ignore').strip()
+                raw = self.ser.readline().decode('ascii', errors='replace').rstrip('\r\n')
+                print(raw)
                 if raw.startswith("DATA|"):
                     parsed = self._parse(raw)
                     if parsed:
@@ -66,15 +67,26 @@ class SerialWorker(QObject):
 
     @staticmethod
     def _parse(line: str) -> dict:
-        """Parse DATA|millis|KEY:VAL|KEY:VAL|... into a dict."""
+        """Parse DATA|elapsed_s|KEY:VAL|KEY:VAL|... into a dict.
+
+        The Arduino sends elapsed seconds as a float (e.g. 43.52).
+        PT values may be empty strings if the firmware omits Serial.print()
+        before the delimiter — those keys are skipped gracefully.
+        """
         try:
             parts = line.split('|')
-            # parts[0] = "DATA", parts[1] = millis
-            result = {'millis': int(parts[1])}
+            # parts[0] = "DATA", parts[1] = elapsed seconds (float)
+            result = {'millis': float(parts[1]) * 1000}  # keep as ms for compat
             for part in parts[2:]:
                 if ':' in part:
                     k, v = part.split(':', 1)
-                    result[k] = float(v)
+                    v = v.strip()
+                    if v == '':        # firmware didn't emit a value — skip key
+                        continue
+                    try:
+                        result[k] = float(v)
+                    except ValueError: # non-numeric token — skip
+                        continue
             return result
         except Exception:
             return {}
@@ -179,7 +191,8 @@ class GroundStation(QMainWindow):
         self.et_dn_hist = deque(maxlen=self.HISTORY_LEN)
         self.nit_up_hist = deque(maxlen=self.HISTORY_LEN)
         self.nit_dn_hist = deque(maxlen=self.HISTORY_LEN)
-        self.lc_total_hist = deque(maxlen=self.HISTORY_LEN)
+        self.lc_et_hist = deque(maxlen=self.HISTORY_LEN)
+        self.lc_nit_hist = deque(maxlen=self.HISTORY_LEN)
 
         # CSV logging
         self.log_rows = []
@@ -513,11 +526,11 @@ class GroundStation(QMainWindow):
         self.lc_n3.update_value(n3)
         self.lc_nt.update_value(nit_total)
 
-        # Valve states from firmware flags
-        self.btn_erv.set_state(bool(state.get('ERV', 0)))
-        self.btn_ev.set_state( bool(state.get('EV',  0)))
-        self.btn_nrv.set_state(bool(state.get('NRV', 0)))
-        self.btn_nv.set_state( bool(state.get('NV',  0)))
+        # Valve states from firmware flags (re-enable if firmware emits these)
+        # self.btn_erv.set_state(bool(state.get('ERV', 0)))
+        # self.btn_ev.set_state( bool(state.get('EV',  0)))
+        # self.btn_nrv.set_state(bool(state.get('NRV', 0)))
+        # self.btn_nv.set_state( bool(state.get('NV',  0)))
 
         # Charts
         self.t_hist.append(t)
@@ -525,14 +538,16 @@ class GroundStation(QMainWindow):
         self.et_dn_hist.append(et_dn)
         self.nit_up_hist.append(nit_up)
         self.nit_dn_hist.append(nit_dn)
-        self.lc_total_hist.append(et_total)
+        self.lc_et_hist.append(et_total)
+        self.lc_nit_hist.append(nit_total)
 
         tl = list(self.t_hist)
         self.curve_et_up.setData(tl, list(self.et_up_hist))
         self.curve_et_dn.setData(tl, list(self.et_dn_hist))
         self.curve_nit_up.setData(tl, list(self.nit_up_hist))
         self.curve_nit_dn.setData(tl, list(self.nit_dn_hist))
-        self.curve_lc_et.setData(tl, list(self.lc_total_hist))
+        self.curve_lc_et.setData(tl, list(self.lc_et_hist))
+        self.curve_lc_nit.setData(tl, list(self.lc_nit_hist))
 
         # CSV logging
         if self.logging_active:

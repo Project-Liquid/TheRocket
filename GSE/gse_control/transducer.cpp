@@ -48,8 +48,14 @@ void Transducer::status() {
   Serial.print(" V  I = "); Serial.print(i_mA, 2);
   Serial.print(" mA  P = "); Serial.print(pressure, 3);
   Serial.println(" PSI");
+  Serial2.print("raw = "); Serial2.print(raw);
+  Serial2.print("  V = "); Serial2.print(v, 3);
+  Serial2.print(" V  I = "); Serial2.print(i_mA, 2);
+  Serial2.print(" mA  P = "); Serial2.print(pressure, 3);
+  Serial2.println(" PSI");
 }
 
 void Transducer::value() {
   Serial.print(readPressure(), 3);
+  Serial2.print(readPressure(), 3);
 }

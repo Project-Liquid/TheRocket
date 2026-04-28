@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 import serial
 
-PORT = "COM9"          # change if needed
+PORT = "COM3"          # change if needed
 BAUD_RATE = 57600
 
 ser = None
