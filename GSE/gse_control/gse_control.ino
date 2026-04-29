@@ -5,13 +5,14 @@
 #include "thermocouple.h"
 #include "heater.h"
 #include "thrustCell.h"
+#include "serial.h"
 
 // Run Control
 bool print_data = true;
 long start_time = 1410065408; // max value placeholder
 static unsigned long lastPressureMs = 0;
-const int runtime = (10*60) + 8;
-const int log_interval_ms = 500;
+const int runtime = -1;
+const int log_interval_ms = 50;
 const bool full_output = false;
 long elapsed = 0;
 
@@ -72,6 +73,9 @@ Thermocouple* RerouteTC;
 Thermocouple* RerouteTC2;
 Thermocouple* RerouteTC3;
 
+// Serial Communication for Radios
+SerialDualClass SerialDual(Serial, Serial2);
+
 //===========================FUNCTIONS============================//
 
 float readEthaneLC() {
@@ -86,150 +90,144 @@ void status(bool verbose = true) {
   elapsed = millis()-start_time;
 
   if (verbose) {  // Full diagnostic output
-    Serial.println("====================");
-    Serial2.println("====================");
+    SerialDual.println("====================");
     // Time
-    Serial.print(elapsed/1000.0); Serial.println("s");
-    Serial2.print(elapsed/1000.0); Serial2.println("s");
+    SerialDual.print(elapsed/1000.0); SerialDual.println("s");
     // PTs
-    Serial.print("Ethane Upstream: \t");
-    Serial2.print("Ethane Upstream: \t");
+    SerialDual.print("Ethane Upstream: \t");
     EthaneUpstreamPT.status();
-    Serial.print("Ethane Downstream: \t");
-    Serial2.print("Ethane Downstream: \t");
+    SerialDual.print("Ethane Downstream: \t");
     EthaneDownstreamPT.status();
-    Serial.print("Nitrous Upstream: \t");
-    Serial2.print("Nitrous Upstream: \t");
+    SerialDual.print("Nitrous Upstream: \t");
     NitrousUpstreamPT.status();
-    Serial.print("Nitrous Downstream: \t");
-    Serial2.print("Nitrous Downstream: \t");
+    SerialDual.print("Nitrous Downstream: \t");
     NitrousDownstreamPT.status();
-    Serial.print("Reroute: \t");
-    Serial2.print("Reroute: \t");
+    SerialDual.print("Reroute: \t");
     ReroutePT.status();
     // Load Cells
-    Serial.print("Ethane: \t");
-    Serial2.print("Ethane: \t");
-    Serial.print("LC1: "); Serial.print(EthaneLC1->read(1)); 
-    Serial2.print("LC1: "); Serial2.print(EthaneLC1->read(1)); 
-    Serial.print("\tLC2: "); Serial.print(EthaneLC2->read(1));
-    Serial2.print("\tLC2: "); Serial2.print(EthaneLC2->read(1));
-    Serial.print("\tLC3: "); Serial.print(EthaneLC3->read(1)); 
-    Serial2.print("\tLC3: "); Serial2.print(EthaneLC3->read(1)); 
-    Serial.print("\tTotal: "); Serial.print(readEthaneLC());
-    Serial2.print("\tTotal: "); Serial2.print(readEthaneLC());
-    Serial.println();
-    Serial2.println();
-    Serial.print("Nitrous: \t");
-    Serial2.print("Nitrous: \t");
-    Serial.print("LC1: "); Serial.print(NitrousLC1->read(1)); 
-    Serial2.print("LC1: "); Serial2.print(NitrousLC1->read(1)); 
-    Serial.print("\tLC2: "); Serial.print(NitrousLC2->read(1)); 
-    Serial2.print("\tLC2: "); Serial2.print(NitrousLC2->read(1)); 
-    Serial.print("\tLC3: "); Serial.print(NitrousLC3->read(1)); 
-    Serial2.print("\tLC3: "); Serial2.print(NitrousLC3->read(1)); 
-    Serial.print("\tTotal: "); Serial.print(readNitrousLC());
-    Serial2.print("\tTotal: "); Serial2.print(readNitrousLC());
-    Serial.println();
-    Serial2.println();
-    Serial.print("Thrust: "); Serial.print(ThrustLC->read());
-    Serial2.print("Thrust: "); Serial2.print(ThrustLC->read());
-    Serial.println();
-    Serial2.println();
-    // Serial.println();
+    SerialDual.print("Ethane: \t");
+    SerialDual.print("LC1: "); SerialDual.print(EthaneLC1->read(1)); 
+    SerialDual.print("\tLC2: "); SerialDual.print(EthaneLC2->read(1));
+    SerialDual.print("\tLC3: "); SerialDual.print(EthaneLC3->read(1)); 
+    // SerialDual.print("\tTotal: "); SerialDual.print(readEthaneLC());
+    SerialDual.println();
+    SerialDual.print("Nitrous: \t");
+    SerialDual.print("LC1: "); SerialDual.print(NitrousLC1->read(1)); 
+    SerialDual.print("\tLC2: "); SerialDual.print(NitrousLC2->read(1)); 
+    SerialDual.print("\tLC3: "); SerialDual.print(NitrousLC3->read(1)); 
+    // SerialDual.print("\tTotal: "); SerialDual.print(readNitrousLC());
+    SerialDual.println();
+    // SerialDual.print("Thrust: "); SerialDual.print(ThrustLC->read());
+    // SerialDual.println();
+    // SerialDual.println();
     // Tank Heaters
-    Serial.print("Ethane Tank 1: "); 
-    Serial2.print("Ethane Tank 1: "); 
-    Serial.println(EthaneHeater1->isOn() ? "ON" : "OFF");
-    Serial2.println(EthaneHeater1->isOn() ? "ON" : "OFF");
-    Serial.print("Nitrous Tank 1: "); 
-    Serial2.print("Nitrous Tank 1: "); 
-    Serial.println(NitrousHeater1->isOn() ? "ON" : "OFF");
-    Serial2.println(NitrousHeater1->isOn() ? "ON" : "OFF");
+    // SerialDual.print("Ethane Tank 1: "); 
+    // SerialDual.println(EthaneHeater1->isOn() ? "ON" : "OFF");
+    // SerialDual.print("Nitrous Tank 1: "); 
+    // SerialDual.println(NitrousHeater1->isOn() ? "ON" : "OFF");
     // Thermocouple
-    Serial.print("Reroute TC: ");
-    Serial2.print("Reroute TC: ");
-    Serial.print(RerouteTC->readHot()); Serial.print("F");
-    Serial2.print(RerouteTC->readHot()); Serial2.print("F");
-    Serial.println();
-    Serial2.println();
-    Serial.print("Reroute TC2: ");
-    Serial2.print("Reroute TC2: ");
-    Serial.print(RerouteTC2->readHot()); Serial.print("F");
-    Serial2.print(RerouteTC2->readHot()); Serial2.print("F");
-    Serial.println();
-    Serial2.println();
-    Serial.print("Reroute TC3: ");
-    Serial2.print("Reroute TC3: ");
-    Serial.print(RerouteTC3->readHot()); Serial.print("F");
-    Serial2.print(RerouteTC3->readHot()); Serial2.print("F");
-    Serial.println();
-    Serial2.println();
+    // SerialDual.print("Reroute TC: ");
+    // SerialDual.print(RerouteTC->readHot()); SerialDual.print("F");
+    // SerialDual.println();
+    // SerialDual.print("Reroute TC2: ");
+    // SerialDual.print(RerouteTC2->readHot()); SerialDual.print("F");
+    // SerialDual.println();
+    // SerialDual.print("Reroute TC3: ");
+    // SerialDual.print(RerouteTC3->readHot()); SerialDual.print("F");
+    // SerialDual.println();
+    // MBVs
+    //SerialDual.print("Ethane MBV: "); SerialDual.println(EthaneMBV->getCurrentDegrees());
   } else { // Simplified output for log
     // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
-    Serial.print("DATA|");
-    Serial2.print("DATA|");
-    Serial.print(elapsed/1000.0);
-    Serial2.print(elapsed/1000.0);
-    Serial.print("|PT_EU:");
-    Serial2.print("|PT_EU:");
+    SerialDual.print("DATA|");
+    SerialDual.print(elapsed/1000.0);
+    SerialDual.print("|PT_EU:");
     EthaneUpstreamPT.value();
-    Serial.print("|PT_ED:");
-    Serial2.print("|PT_ED:");
+    SerialDual.print("|PT_ED:");
     EthaneDownstreamPT.value();
-    Serial.print("|PT_NU:");
-    Serial2.print("|PT_NU:");
-    NitrousUpstreamPT.value();
-    Serial.print("|PT_ND:");
-    Serial2.print("|PT_ND:");
-    NitrousDownstreamPT.value();
-    Serial.print("|LC_E1:");
-    Serial2.print("|LC_E1:");
-    Serial.print(EthaneLC1->read(1));
-    Serial2.print(EthaneLC1->read(1));
-    Serial.print("|LC_E2:");
-    Serial2.print("|LC_E2:");
-    Serial.print(EthaneLC2->read(1));
-    Serial2.print(EthaneLC2->read(1));
-    Serial.print("|LC_E3:");
-    Serial2.print("|LC_E3:");
-    Serial.print(EthaneLC3->read(1));
-    Serial2.print(EthaneLC3->read(1));
-    Serial.print("|LC_N1:");
-    Serial2.print("|LC_N1:");
-    Serial.print(NitrousLC1->read(1));
-    Serial2.print(NitrousLC1->read(1));
-    Serial.print("|LC_N2:");
-    Serial2.print("|LC_N2:");
-    Serial.print(NitrousLC2->read(1));
-    Serial2.print(NitrousLC2->read(1));
-    Serial.print("|LC_N3:");
-    Serial2.print("|LC_N3:");
-    Serial.print(NitrousLC3->read(1));
-    Serial2.print(NitrousLC3->read(1));
-    Serial.print("|LC_T:");
-    Serial2.print("|LC_T:");
-    Serial.print(ThrustLC->read());
-    Serial2.print(ThrustLC->read());
-    //Serial.print("|");
-    Serial.println();
-    Serial2.println();
+    // SerialDual.print("|PT_NU:");
+    // NitrousUpstreamPT.value();
+    // SerialDual.print("|PT_ND:");
+    // NitrousDownstreamPT.value();
+    // SerialDual.print("|LC_E1:");
+    // SerialDual.print(EthaneLC1->read(1));
+    // SerialDual.print("|LC_E2:");
+    // SerialDual.print(EthaneLC2->read(1));
+    // SerialDual.print("|LC_E3:");
+    // SerialDual.print(EthaneLC3->read(1));
+    // SerialDual.print("|LC_N1:");
+    // SerialDual.print(NitrousLC1->read(1));
+    // SerialDual.print("|LC_N2:");
+    // SerialDual.print(NitrousLC2->read(1));
+    // SerialDual.print("|LC_N3:");
+    // SerialDual.print(NitrousLC3->read(1));
+    // SerialDual.print("|LC_T:");
+    // SerialDual.print(ThrustLC->read());
+    // SerialDual.print("|ERV:");
+    // SerialDual.print(EthaneRunValve.state());
+    // SerialDual.print("|EV:");
+    // SerialDual.print(EthaneVent.state());
+    // SerialDual.print("|NRV:");
+    // SerialDual.print(NitrousRunValve.state());
+    // SerialDual.print("|NV:");
+    // SerialDual.print(NitrousVent.state());
+    // SerialDual.print("|MBV_E:");
+    // SerialDual.print(EthaneMBV->getCurrentDegrees());
+    // SerialDual.print("|MBV_N:");
+    // SerialDual.print(NitrousMBV->getCurrentDegrees());
+    // //SerialDual.print("|");
+    SerialDual.println();
   }
+}
+
+void EMERGENCY_STOP() {
+  ventEthane();
+  ventNitrous();
+}
+
+void ventEthane() {
+  EthaneRunValve.close();
+  EthaneVent.setNextActuation(1000, true);
+  EthaneVent.setNextActuation(4000, false);
+}
+
+void ventNitrous() {
+  NitrousRunValve.close();
+  NitrousVent.setNextActuation(1000, true);
+  NitrousVent.setNextActuation(4000, false);
+}
+
+void coldFlowEthane(long duration_ms) {
+  EthaneRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+
+  EthaneRunValve.open();
+
+  EthaneMBV->setNextActuation(5000);
+  EthaneMBV->setNextActuation(5000 + duration_ms);
+
+  EthaneRunValve.setNextActuation(10000 + duration_ms, false);
+}
+
+void coldFlowNitrous(long duration_ms) {
+  NitrousRunValve.open();
+
+  NitrousMBV->setNextActuation(5000);
+  NitrousMBV->setNextActuation(5000 + duration_ms);
+
+  NitrousRunValve.setNextActuation(10000 + duration_ms, false);
 }
 
 //===========================EXECUTION============================//
 void setup()
 {
-  Serial.begin(57600);
-  Serial2.begin(57600);
-  Serial.flush();
-  Serial2.flush();
-  Serial.println("START");
-  Serial2.println("START");
+  SerialDual.begin(57600);
+  //SerialDual.flush();
+  SerialDual.println("START");
   delay(2000);
 
 
-  EthaneMBV = new MBV(ETHANE_MBV_PIN, 42, 44);
+  EthaneMBV = new MBV(ETHANE_MBV_PIN, 44, 42);
   NitrousMBV = new MBV(NITROUS_MBV_PIN, 50, 48);
 
   EthaneLC1 = new LoadCell(22, 23);
@@ -263,16 +261,11 @@ void setup()
     start_time = millis();
   }
   if(full_output) {
-    Serial.println("Commands:");
-    Serial2.println("Commands:");
-    Serial.println("  ETHANE_VENT_ON / ETHANE_VENT_OFF");
-    Serial2.println("  ETHANE_VENT_ON / ETHANE_VENT_OFF");
-    Serial.println("  NITROUS_VENT_ON / NITROUS_VENT_OFF");
-    Serial2.println("  NITROUS_VENT_ON / NITROUS_VENT_OFF");
-    Serial.println("  ETHANE_RUN_ON / ETHANE_RUN_OFF");
-    Serial2.println("  ETHANE_RUN_ON / ETHANE_RUN_OFF");
-    Serial.println("  NITROUS_RUN_ON / NITROUS_RUN_OFF");
-    Serial2.println("  NITROUS_RUN_ON / NITROUS_RUN_OFF");
+    SerialDual.println("Commands:");
+    SerialDual.println("  ETHANE_VENT_ON / ETHANE_VENT_OFF");
+    SerialDual.println("  NITROUS_VENT_ON / NITROUS_VENT_OFF");
+    SerialDual.println("  ETHANE_RUN_ON / ETHANE_RUN_OFF");
+    SerialDual.println("  NITROUS_RUN_ON / NITROUS_RUN_OFF");
   }
 }
 
@@ -280,8 +273,11 @@ String cmd = "";
 
 void loop()
 {
-  //Serial.flush();
+  //SerialDual.flush();
   elapsed = millis()-start_time;
+
+  EthaneMBV->update();
+  NitrousMBV->update();
 
   // LOG
   if (millis() - lastPressureMs >= log_interval_ms && print_data)
@@ -304,37 +300,37 @@ void loop()
     // vent
     if (cmd.equalsIgnoreCase("ETHANE_VENT_ON")) {
       EthaneVent.open();
-      if(full_output) { Serial.println("ETHANE VENT OPEN"); Serial2.println("ETHANE VENT OPEN"); }
+      if(full_output) { SerialDual.println("ETHANE VENT OPEN"); }
     }
     else if (cmd.equalsIgnoreCase("ETHANE_VENT_OFF")) {
       EthaneVent.close();
-      if(full_output) { Serial.println("ETHANE VENT CLOSED"); Serial2.println("ETHANE VENT CLOSED"); }
+      if(full_output) { SerialDual.println("ETHANE VENT CLOSED"); }
     } 
     else if (cmd.equalsIgnoreCase("NITROUS_VENT_ON")) {
       NitrousVent.open();
-      if(full_output) { Serial.println("NITROUS VENT OPEN"); Serial2.println("NITROUS VENT OPEN"); }
+      if(full_output) { SerialDual.println("NITROUS VENT OPEN"); }
     }
     else if (cmd.equalsIgnoreCase("NITROUS_VENT_OFF")) {
       NitrousVent.close();
-      if(full_output) { Serial.println("NITROUS VENT CLOSED"); Serial2.println("NITROUS VENT CLOSED"); }
+      if(full_output) { SerialDual.println("NITROUS VENT CLOSED"); }
     }
 
     // solenoid
     else if (cmd.equalsIgnoreCase("ETHANE_RUN_ON")) {
       EthaneRunValve.open();
-      if(full_output) { Serial.println("ETHANE RUN VALVE OPEN"); Serial2.println("ETHANE RUN VALVE OPEN"); }
+      if(full_output) { SerialDual.println("ETHANE RUN VALVE OPEN"); }
     }
     else if (cmd.equalsIgnoreCase("ETHANE_RUN_OFF")) {
       EthaneRunValve.close();
-      if(full_output) { Serial.println("ETHANE RUN VALVE CLOSED"); Serial2.println("ETHANE RUN VALVE CLOSED"); }
+      if(full_output) { SerialDual.println("ETHANE RUN VALVE CLOSED"); }
     } 
     else if (cmd.equalsIgnoreCase("NITROUS_RUN_ON")) {
       NitrousRunValve.open();
-      if(full_output) { Serial.println("NITROUS RUN VALVE OPEN"); Serial2.println("NITROUS RUN VALVE OPEN"); }
+      if(full_output) { SerialDual.println("NITROUS RUN VALVE OPEN"); }
     } 
     else if (cmd.equalsIgnoreCase("NITROUS_RUN_OFF")) {
       NitrousRunValve.close();
-      if(full_output) { Serial.println("NITROUS RUN VALVE CLOSED"); Serial2.println("NITROUS RUN VALVE CLOSED"); }
+      if(full_output) { SerialDual.println("NITROUS RUN VALVE CLOSED"); }
     } 
     
     // run control
@@ -351,30 +347,58 @@ void loop()
     }
     
     // ball
-    else if (cmd.equalsIgnoreCase("ETHANE_A")) {
+    else if (cmd.equalsIgnoreCase("ETHANE_90")) {
       EthaneMBV->next_90();
     } 
-    else if (cmd.equalsIgnoreCase("ETHANE_S")) {
+    else if (cmd.equalsIgnoreCase("ETHANE_10")) {
       EthaneMBV->move_degrees(10);
     } 
-    else if (cmd.equalsIgnoreCase("ETHANE_D")) {
+    else if (cmd.equalsIgnoreCase("ETHANE_360")) {
       EthaneMBV->move_degrees(360);
     } 
-    else if (cmd.equalsIgnoreCase("ETHANE_R")) {
+    else if (cmd.equalsIgnoreCase("ETHANE_RESET")) {
       EthaneMBV->reset();
-      if(full_output) { Serial.println("Position reset to zero"); Serial2.println("Position reset to zero"); }
+      if(full_output) { SerialDual.println("Ethane MBV position reset to zero"); }
     }
-    else if (cmd.equalsIgnoreCase("ETHANE_STATUS")) {
+    else if (cmd.equalsIgnoreCase("ETHANE_MBV_STATUS")) {
       EthaneMBV->status();
+    }
+    else if (cmd.equalsIgnoreCase("NITROUS_90")) {
+      NitrousMBV->next_90();
+    } 
+    else if (cmd.equalsIgnoreCase("NITROUS_10")) {
+      NitrousMBV->move_degrees(10);
+    } 
+    else if (cmd.equalsIgnoreCase("NITROUS_360")) {
+      NitrousMBV->move_degrees(360);
+    } 
+    else if (cmd.equalsIgnoreCase("NITROUS_RESET")) {
+      NitrousMBV->reset();
+      if(full_output) { SerialDual.println("Nitrous MBV position reset to zero"); }
+    }
+    else if (cmd.equalsIgnoreCase("NITROUS_MBV_STATUS")) {
+      NitrousMBV->status();
+    }
+    else if (cmd.equalsIgnoreCase("E_STOP")) {
+      EMERGENCY_STOP();
+    }
+    else if (cmd.equalsIgnoreCase("COLD_FLOW")) {
+      coldFlowEthane(5000);
     }
 
     else {
-      if(full_output) { Serial.println("Unknown command."); Serial2.println("Unknown command."); }
+      if(full_output) { SerialDual.println("Unknown command."); }
     }
   }
 
-  EthaneMBV->update();
-  NitrousMBV->update();
+  // EthaneMBV->update();
+  // NitrousMBV->update();
+  EthaneVent.checkScheduledActuation();
+  NitrousVent.checkScheduledActuation();
+  EthaneRunValve.checkScheduledActuation();
+  NitrousRunValve.checkScheduledActuation();
+  EthaneMBV->checkScheduledActuation();
+  NitrousMBV->checkScheduledActuation();
 
   if(heaters_active) {
     EthaneHeater1->update();
@@ -383,5 +407,5 @@ void loop()
     NitrousHeater2->update();
   }
 
-  delay(20);
+  //delay(10);
 }

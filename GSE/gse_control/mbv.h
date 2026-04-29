@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 #include <Encoder.h>
+#include <StandardCplusplus.h>
+#include <vector>
 
 class MBV {
 private:
@@ -24,6 +26,12 @@ private:
   const float counts_per_degree = (counts_per_motor_rev * gear_ratio) / 360.0;
   const float counts_per_90 = (long)(90 * counts_per_degree);
 
+  struct ScheduledActuation {
+    unsigned long trigger_ms;
+    float degrees;
+  };
+  std::vector<ScheduledActuation> scheduled_actuations;
+
 public:
   MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2);
   bool next_90();
@@ -31,5 +39,10 @@ public:
   void reset();
   void update();
   void status();
+  long getCurrentPosition();
+  float getCurrentDegrees();
+  void setNextActuation(int delay, float degrees = 90);
+  void checkScheduledActuation();
+  void clearSchedule();
 };
 

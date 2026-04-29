@@ -13,6 +13,7 @@ Arduino:
 - [Encoder](https://www.pjrc.com/teensy/td_libs_Encoder.html) by Paul Stoffregen
 - [Adafruit_MCP9600](https://github.com/adafruit/Adafruit_MCP9600) by Adafruit
 - [SparkFun Qwiic Scale NAU7802 Library](https://github.com/sparkfun/SparkFun_Qwiic_Scale_NAU7802_Arduino_Library) by sparkfun
+- [StandardCplusplus](https://github.com/maniacbug/StandardCplusplus/blob/master/README.md) by maniacbug
 Python:
 - [pySerial](https://github.com/pyserial/pyserial)
 - [PyQt5](https://doc.qt.io/archives/qtforpython-5/)

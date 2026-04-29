@@ -8,11 +8,11 @@ MBV::MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2)
 
   pinMode(pwm_pin, OUTPUT);
   analogWrite(pwm_pin, 0);
-  enc.write(0);
+  //enc.write(0);
 }
 
 bool MBV::next_90() {
-  current_position = enc.read();
+  // current_position = enc.read();
   if (moving) return false;
   float current_deg = current_position / counts_per_degree;
   float next_deg = (floor(current_deg / 90.0) + 1.0) * 90.0;
@@ -22,12 +22,13 @@ bool MBV::next_90() {
   target_position = (long)(next_deg * counts_per_degree);
   moving = true;
   move_start_ms = millis();
+  // Serial.print("Moving to: "); Serial.println(target_position / counts_per_degree);
   return true;
 }
 
 bool MBV::move_degrees(float degrees) {
   if(moving) return false;
-  current_position = enc.read();
+  // current_position = enc.read();
   target_position = current_position + (long)(degrees * counts_per_degree);
   moving = true;
   move_start_ms = millis();
@@ -35,22 +36,24 @@ bool MBV::move_degrees(float degrees) {
 }
 
 void MBV::reset() {
-  enc.write(0);
+  //enc.write(0);
   target_position = 0;
 }
 
 void MBV::update() {
+  current_position = enc.read();
   if (moving) {
-    long error = target_position - enc.read();
+    long error = target_position - current_position;
+    //Serial.print("Error: "); Serial.println(error);
 
     if (abs(error) <= STOP_ZONE || millis() - move_start_ms > TIMEOUT_MS) {
       analogWrite(pwm_pin, 0);
       moving = false;
-      delay(250);
-      Serial.print("Stopped at: ");
-      Serial.print(enc.read() / counts_per_degree);
-      Serial.println(" degrees");
-    } else if (error < SLOW_ZONE) {
+      //delay(250);
+      // Serial.print("Stopped at: ");
+      // Serial.print(current_position / counts_per_degree);
+      // Serial.println(" degrees");
+    } else if (abs(error) < SLOW_ZONE) {
       analogWrite(pwm_pin, MOTOR_SLOW);
     } else {
       analogWrite(pwm_pin, MOTOR_FAST);
@@ -59,7 +62,6 @@ void MBV::update() {
 }
 
 void MBV::status() {
-  current_position = enc.read();
   Serial.print("Target: ");
   Serial.print(target_position);
   Serial.print(" (degrees: ");
@@ -71,4 +73,27 @@ void MBV::status() {
   Serial.print(" (degrees: ");
   Serial.print(current_position / counts_per_degree);
   Serial.println(")");
+}
+
+long MBV::getCurrentPosition() {
+  return current_position;
+}
+
+float MBV::getCurrentDegrees() {
+  return getCurrentPosition() / counts_per_degree;
+} 
+
+void MBV::setNextActuation(int delay, float degrees) {
+  scheduled_actuations.push_back({ millis() + (unsigned long)delay, degrees });
+}
+
+void MBV::checkScheduledActuation() {
+  if (!scheduled_actuations.empty() && millis() >= scheduled_actuations[0].trigger_ms) {
+    next_90();
+    scheduled_actuations.erase(scheduled_actuations.begin());
+  }
+}
+
+void MBV::clearSchedule() {
+  scheduled_actuations.clear();
 }

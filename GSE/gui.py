@@ -201,6 +201,10 @@ class GroundStation(QMainWindow):
         # Serial monitor
         self.serial_monitor_lines = deque(maxlen=500)
 
+        # MBV positions
+        self.mbv_e_pos = 0.0
+        self.mbv_n_pos = 0.0
+
         self._build_ui()
 
     # ── UI Construction ──────────────────────────────────────────
@@ -221,13 +225,14 @@ class GroundStation(QMainWindow):
         left = QVBoxLayout()
         left.addWidget(self._build_pt_group())
         left.addWidget(self._build_lc_group())
+        left.addWidget(self._build_serial_monitor_group())
         left.addStretch()
 
         right = QVBoxLayout()
         right.addWidget(self._build_valve_group())
+        right.addWidget(self._build_mbv_group())
         right.addWidget(self._build_cold_flow_group())
         right.addWidget(self._build_export_group())
-        right.addWidget(self._build_serial_monitor_group())
         right.addStretch()
 
         content.addLayout(left, 3)
@@ -331,6 +336,56 @@ class GroundStation(QMainWindow):
         estop.clicked.connect(self._emergency_stop)
         layout.addWidget(estop)
 
+        return grp
+
+    def _build_mbv_group(self):
+        grp = QGroupBox("MOTORIZED BALL VALVES")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
+
+        # Ethane MBV
+        ethane_layout = QVBoxLayout()
+        ethane_lbl = QLabel("Ethane MBV")
+        ethane_lbl.setFont(QFont("Courier New", 9, QFont.Bold))
+        ethane_lbl.setStyleSheet("color:#58a6ff;")
+        self.mbv_e_display = SensorLabel("Position", "°")
+        ethane_layout.addWidget(ethane_lbl)
+        ethane_layout.addWidget(self.mbv_e_display)
+        
+        ethane_btn_layout = QHBoxLayout()
+        btn_e_10 = QPushButton("+10°")
+        btn_e_10.setFont(QFont("Courier New", 9))
+        btn_e_10.clicked.connect(lambda: self.send_fn("ETHANE_10"))
+        btn_e_90 = QPushButton("+90°")
+        btn_e_90.setFont(QFont("Courier New", 9))
+        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_90"))
+        ethane_btn_layout.addWidget(btn_e_10)
+        ethane_btn_layout.addWidget(btn_e_90)
+        ethane_layout.addLayout(ethane_btn_layout)
+
+        # Nitrous MBV
+        nitrous_layout = QVBoxLayout()
+        nitrous_lbl = QLabel("Nitrous MBV")
+        nitrous_lbl.setFont(QFont("Courier New", 9, QFont.Bold))
+        nitrous_lbl.setStyleSheet("color:#ff7b72;")
+        self.mbv_n_display = SensorLabel("Position", "°")
+        nitrous_layout.addWidget(nitrous_lbl)
+        nitrous_layout.addWidget(self.mbv_n_display)
+        
+        nitrous_btn_layout = QHBoxLayout()
+        btn_n_10 = QPushButton("+10°")
+        btn_n_10.setFont(QFont("Courier New", 9))
+        btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_10"))
+        btn_n_90 = QPushButton("+90°")
+        btn_n_90.setFont(QFont("Courier New", 9))
+        btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_90"))
+        nitrous_btn_layout.addWidget(btn_n_10)
+        nitrous_btn_layout.addWidget(btn_n_90)
+        nitrous_layout.addLayout(nitrous_btn_layout)
+
+        layout.addLayout(ethane_layout)
+        layout.addLayout(nitrous_layout)
         return grp
 
     def _build_cold_flow_group(self):
@@ -526,11 +581,19 @@ class GroundStation(QMainWindow):
         self.lc_n3.update_value(n3)
         self.lc_nt.update_value(nit_total)
 
+        # MBV positions
+        mbv_e = state.get('MBV_E', 0.0)
+        mbv_n = state.get('MBV_N', 0.0)
+        self.mbv_e_pos = mbv_e
+        self.mbv_n_pos = mbv_n
+        self.mbv_e_display.update_value(mbv_e)
+        self.mbv_n_display.update_value(mbv_n)
+
         # Valve states from firmware flags (re-enable if firmware emits these)
-        # self.btn_erv.set_state(bool(state.get('ERV', 0)))
-        # self.btn_ev.set_state( bool(state.get('EV',  0)))
-        # self.btn_nrv.set_state(bool(state.get('NRV', 0)))
-        # self.btn_nv.set_state( bool(state.get('NV',  0)))
+        self.btn_erv.set_state(bool(state.get('ERV', 0)))
+        self.btn_ev.set_state( bool(state.get('EV',  0)))
+        self.btn_nrv.set_state(bool(state.get('NRV', 0)))
+        self.btn_nv.set_state( bool(state.get('NV',  0)))
 
         # Charts
         self.t_hist.append(t)
