@@ -6,15 +6,29 @@
 #include "heater.h"
 #include "thrustCell.h"
 #include "serial.h"
+#include <StandardCplusplus.h>
+#include <string>
 
 // Run Control
 bool print_data = true;
-long start_time = 1410065408; // max value placeholder
-static unsigned long lastPressureMs = 0;
+long start_time = 0; //1410065408; // max value placeholder
 const int runtime = -1;
-const int log_interval_ms = 50;
+//static unsigned long lastPressureMs = 0;
+//const int log_interval_ms = 50;
 const bool full_output = false;
 long elapsed = 0;
+bool static_fire_initializing = false;
+long static_fire_duration_ms = 0;
+
+struct LogInterval {
+  const unsigned int interval_ms;
+  unsigned long last_trigger_ms;
+};
+
+LogInterval PTLog{50, 0};
+LogInterval LCLog{200, 0};
+LogInterval ValveLog{200, 0};
+LogInterval MBVLog{200, 0};
 
 // Pressure Transducers
 const int ETHANE_UPSTREAM_PIN = A12;
@@ -37,7 +51,7 @@ Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
 const int ETHANE_RUN_PIN = 47;
 const int ETHANE_VENT_PIN = 46;
 const int NITROUS_RUN_PIN = 53;
-const int NITROUS_VENT_PIN = 52;
+const int NITROUS_VENT_PIN = 40;
 
 Solenoid EthaneRunValve(ETHANE_RUN_PIN);
 Solenoid EthaneVent(ETHANE_VENT_PIN);
@@ -92,91 +106,72 @@ void status(bool verbose = true) {
   if (verbose) {  // Full diagnostic output
     SerialDual.println("====================");
     // Time
-    SerialDual.print(elapsed/1000.0); SerialDual.println("s");
+    SerialDual.print(String(elapsed/1000.0) + "s");
     // PTs
-    SerialDual.print("Ethane Upstream: \t");
-    EthaneUpstreamPT.status();
-    SerialDual.print("Ethane Downstream: \t");
-    EthaneDownstreamPT.status();
-    SerialDual.print("Nitrous Upstream: \t");
-    NitrousUpstreamPT.status();
-    SerialDual.print("Nitrous Downstream: \t");
-    NitrousDownstreamPT.status();
-    SerialDual.print("Reroute: \t");
-    ReroutePT.status();
+    SerialDual.print("Ethane Upstream: \t" + EthaneUpstreamPT.status());
+    SerialDual.print("Ethane Downstream: \t" + EthaneDownstreamPT.status());
+    SerialDual.print("Nitrous Upstream: \t" + NitrousUpstreamPT.status());
+    SerialDual.print("Nitrous Downstream: \t" + NitrousDownstreamPT.status());
+    SerialDual.print("Reroute: \t" + ReroutePT.status());
     // Load Cells
     SerialDual.print("Ethane: \t");
-    SerialDual.print("LC1: "); SerialDual.print(EthaneLC1->read(1)); 
-    SerialDual.print("\tLC2: "); SerialDual.print(EthaneLC2->read(1));
-    SerialDual.print("\tLC3: "); SerialDual.print(EthaneLC3->read(1)); 
-    // SerialDual.print("\tTotal: "); SerialDual.print(readEthaneLC());
+    SerialDual.print("LC1: " + String(EthaneLC1->read(1))); 
+    SerialDual.print("\tLC2: " + String(EthaneLC2->read(1)));
+    SerialDual.print("\tLC3: " + String(EthaneLC3->read(1))); 
+    // SerialDual.print("\tTotal: " + String(SerialDual.print(readEthaneLC()));
     SerialDual.println();
     SerialDual.print("Nitrous: \t");
-    SerialDual.print("LC1: "); SerialDual.print(NitrousLC1->read(1)); 
-    SerialDual.print("\tLC2: "); SerialDual.print(NitrousLC2->read(1)); 
-    SerialDual.print("\tLC3: "); SerialDual.print(NitrousLC3->read(1)); 
-    // SerialDual.print("\tTotal: "); SerialDual.print(readNitrousLC());
+    SerialDual.print("LC1: " + String(NitrousLC1->read(1))); 
+    SerialDual.print("\tLC2: " + String(NitrousLC2->read(1))); 
+    SerialDual.print("\tLC3: " + String(NitrousLC3->read(1))); 
+    // SerialDual.print("\tTotal: " + String(readNitrousLC()));
     SerialDual.println();
-    // SerialDual.print("Thrust: "); SerialDual.print(ThrustLC->read());
-    // SerialDual.println();
+    // SerialDual.print("Thrust: " + String(ThrustLC->read()));
     // SerialDual.println();
     // Tank Heaters
-    // SerialDual.print("Ethane Tank 1: "); 
-    // SerialDual.println(EthaneHeater1->isOn() ? "ON" : "OFF");
-    // SerialDual.print("Nitrous Tank 1: "); 
-    // SerialDual.println(NitrousHeater1->isOn() ? "ON" : "OFF");
+    // SerialDual.print("Ethane Tank 1: " + String(EthaneHeater1->isOn() ? "ON" : "OFF"));
+    // SerialDual.print("Nitrous Tank 1: " + String(NitrousHeater1->isOn() ? "ON" : "OFF"));
     // Thermocouple
-    // SerialDual.print("Reroute TC: ");
-    // SerialDual.print(RerouteTC->readHot()); SerialDual.print("F");
-    // SerialDual.println();
-    // SerialDual.print("Reroute TC2: ");
-    // SerialDual.print(RerouteTC2->readHot()); SerialDual.print("F");
-    // SerialDual.println();
-    // SerialDual.print("Reroute TC3: ");
-    // SerialDual.print(RerouteTC3->readHot()); SerialDual.print("F");
-    // SerialDual.println();
+    // SerialDual.println("Reroute TC: " + String(RerouteTC->readHot()) + "F");
+    // SerialDual.println("Reroute TC2: " + String(RerouteTC2->readHot()) + "F");
+    // SerialDual.println("Reroute TC3: " + String(RerouteTC3->readHot()) + "F");
     // MBVs
-    //SerialDual.print("Ethane MBV: "); SerialDual.println(EthaneMBV->getCurrentDegrees());
+    //SerialDual.println("Ethane MBV: " + String(EthaneMBV->getCurrentDegrees()));
   } else { // Simplified output for log
+    String datastream = "";
+    long time = millis();
     // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
-    SerialDual.print("DATA|");
-    SerialDual.print(elapsed/1000.0);
-    SerialDual.print("|PT_EU:");
-    EthaneUpstreamPT.value();
-    SerialDual.print("|PT_ED:");
-    EthaneDownstreamPT.value();
-    // SerialDual.print("|PT_NU:");
-    // NitrousUpstreamPT.value();
-    // SerialDual.print("|PT_ND:");
-    // NitrousDownstreamPT.value();
-    // SerialDual.print("|LC_E1:");
-    // SerialDual.print(EthaneLC1->read(1));
-    // SerialDual.print("|LC_E2:");
-    // SerialDual.print(EthaneLC2->read(1));
-    // SerialDual.print("|LC_E3:");
-    // SerialDual.print(EthaneLC3->read(1));
-    // SerialDual.print("|LC_N1:");
-    // SerialDual.print(NitrousLC1->read(1));
-    // SerialDual.print("|LC_N2:");
-    // SerialDual.print(NitrousLC2->read(1));
-    // SerialDual.print("|LC_N3:");
-    // SerialDual.print(NitrousLC3->read(1));
-    // SerialDual.print("|LC_T:");
-    // SerialDual.print(ThrustLC->read());
-    // SerialDual.print("|ERV:");
-    // SerialDual.print(EthaneRunValve.state());
-    // SerialDual.print("|EV:");
-    // SerialDual.print(EthaneVent.state());
-    // SerialDual.print("|NRV:");
-    // SerialDual.print(NitrousRunValve.state());
-    // SerialDual.print("|NV:");
-    // SerialDual.print(NitrousVent.state());
-    // SerialDual.print("|MBV_E:");
-    // SerialDual.print(EthaneMBV->getCurrentDegrees());
-    // SerialDual.print("|MBV_N:");
-    // SerialDual.print(NitrousMBV->getCurrentDegrees());
-    // //SerialDual.print("|");
-    SerialDual.println();
+    datastream += "DATA|" + String((elapsed/1000.0), 3);
+    if(time - PTLog.last_trigger_ms >= PTLog.interval_ms) {
+      datastream += "|PT_EU:" + String(EthaneUpstreamPT.readPressure(), 3);
+      datastream += "|PT_ED:" + String(EthaneDownstreamPT.readPressure(), 3);
+      datastream += "|PT_NU:" + String(NitrousUpstreamPT.readPressure(), 3);
+      datastream += "|PT_ND:" + String(NitrousDownstreamPT.readPressure(), 3);
+      PTLog.last_trigger_ms = time - (time % PTLog.interval_ms);
+    }
+    
+    if(time - LCLog.last_trigger_ms >= LCLog.interval_ms) {
+      datastream += "|LC_E1:" + String(EthaneLC1->read(1));
+      datastream += "|LC_E2:" + String(EthaneLC2->read(1));
+      datastream += "|LC_E3:" + String(EthaneLC3->read(1));
+      datastream += "|LC_N1:" + String(NitrousLC1->read(1));
+      datastream += "|LC_N2:" + String(NitrousLC2->read(1));
+      datastream += "|LC_N3:" + String(NitrousLC3->read(1));
+      datastream += "|LC_T:" + String(ThrustLC->read());
+      LCLog.last_trigger_ms = time - (time % LCLog.interval_ms);
+    }
+
+    if(time - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
+      datastream += "|ERV:" + String(EthaneRunValve.state());
+      datastream += "|EV:" + String(EthaneVent.state());
+      datastream += "|NRV:" + String(NitrousRunValve.state());
+      datastream += "|NV:" + String(NitrousVent.state());
+      datastream += "|MBV_E:" + String(EthaneMBV->getCurrentDegrees());
+      datastream += "|MBV_N:" + String(NitrousMBV->getCurrentDegrees());
+      ValveLog.last_trigger_ms = time - (time % ValveLog.interval_ms);
+    }
+
+    if (datastream.lastIndexOf("|") > 4) SerialDual.println(datastream);
   }
 }
 
@@ -218,6 +213,30 @@ void coldFlowNitrous(long duration_ms) {
   NitrousRunValve.setNextActuation(10000 + duration_ms, false);
 }
 
+void staticFire() {
+  //NitrousRunValve.open();
+  EthaneRunValve.open();
+
+  //Ignitor.setNextActutation(5000);
+  delay(1000); // REMOVE REMOVE REMOVE
+  //if (RerouteTC->readHot() > 212) {
+    //NitrousMBV->next_90();
+    EthaneMBV->setNextActuation(200);
+    //NitrousMBV->setNextActuation(200 + static_fire_duration_ms);
+    EthaneMBV->setNextActuation(200 + static_fire_duration_ms + 500);
+    //NitrousRunValve.setNextActuation(200 + static_fire_duration_ms+600, false);
+    EthaneRunValve.setNextActuation(200 + static_fire_duration_ms + 600, false);
+    
+    // Vent
+    EthaneVent.setNextActuation(800 + static_fire_duration_ms + 1000, true);
+    EthaneVent.setNextActuation(800 + static_fire_duration_ms + 4000, false);
+    //NitrousVent.setNextActuation(800 + static_fire_duration_ms + 5000, true);
+    //NitrousVent.setNextActuation(800 + static_fire_duration_ms + 9000, false);
+
+    static_fire_initializing = false;
+  //}
+}
+
 //===========================EXECUTION============================//
 void setup()
 {
@@ -228,7 +247,7 @@ void setup()
 
 
   EthaneMBV = new MBV(ETHANE_MBV_PIN, 44, 42);
-  NitrousMBV = new MBV(NITROUS_MBV_PIN, 50, 48);
+  NitrousMBV = new MBV(NITROUS_MBV_PIN, 38, 48);
 
   EthaneLC1 = new LoadCell(22, 23);
   EthaneLC2 = new LoadCell(24, 25);
@@ -252,9 +271,12 @@ void setup()
   RerouteTC3 = new Thermocouple(0x66);
 
   EthaneHeater1 = new Heater(49, &EthaneUpstreamPT);
-  EthaneHeater2 = new Heater(51, &EthaneUpstreamPT);
-  NitrousHeater1 = new Heater(49, &NitrousUpstreamPT);
-  NitrousHeater2 = new Heater(51, &NitrousUpstreamPT);
+  EthaneHeater2 = new Heater(41, &EthaneUpstreamPT);
+  NitrousHeater1 = new Heater(43, &NitrousUpstreamPT);
+  NitrousHeater2 = new Heater(45, &NitrousUpstreamPT);
+
+  EthaneUpstreamPT.setRedline(1100, 25);
+  NitrousUpstreamPT.setRedline(1100, 25);
   
   delay(1200);
   if (print_data) {
@@ -273,16 +295,14 @@ String cmd = "";
 
 void loop()
 {
-  //SerialDual.flush();
   elapsed = millis()-start_time;
 
   EthaneMBV->update();
   NitrousMBV->update();
 
   // LOG
-  if (millis() - lastPressureMs >= log_interval_ms && print_data)
+  if (print_data)
   {
-    lastPressureMs += log_interval_ms;
     status(full_output);
   }
 
@@ -296,6 +316,7 @@ void loop()
     if (Serial.available()) cmd = Serial.readStringUntil('\n');
     else cmd = Serial2.readStringUntil('\n');
     cmd.trim();
+    cmd.toUpperCase();
 
     // vent
     if (cmd.equalsIgnoreCase("ETHANE_VENT_ON")) {
@@ -337,7 +358,6 @@ void loop()
     else if (cmd.equalsIgnoreCase("START")) {
       print_data = true;
       start_time = millis();
-      lastPressureMs = start_time;
     } 
     else if (cmd.equalsIgnoreCase("STOP")) {
       print_data = false;
@@ -347,32 +367,30 @@ void loop()
     }
     
     // ball
-    else if (cmd.equalsIgnoreCase("ETHANE_90")) {
-      EthaneMBV->next_90();
-    } 
-    else if (cmd.equalsIgnoreCase("ETHANE_10")) {
-      EthaneMBV->move_degrees(10);
-    } 
-    else if (cmd.equalsIgnoreCase("ETHANE_360")) {
-      EthaneMBV->move_degrees(360);
-    } 
-    else if (cmd.equalsIgnoreCase("ETHANE_RESET")) {
+    else if (cmd.indexOf("ETHANE_MBV_") >= 0) {
+      String degrees = cmd.substring(11);
+      if(degrees.indexOf("N") >= 0) {
+        EthaneMBV->next_90();
+      } else if(degrees.toInt()) {
+        EthaneMBV->move_degrees(degrees.toInt());
+      }
+    }
+    else if (cmd.equalsIgnoreCase("ETHANE_MBV_RESET")) {
       EthaneMBV->reset();
       if(full_output) { SerialDual.println("Ethane MBV position reset to zero"); }
     }
     else if (cmd.equalsIgnoreCase("ETHANE_MBV_STATUS")) {
       EthaneMBV->status();
     }
-    else if (cmd.equalsIgnoreCase("NITROUS_90")) {
-      NitrousMBV->next_90();
-    } 
-    else if (cmd.equalsIgnoreCase("NITROUS_10")) {
-      NitrousMBV->move_degrees(10);
-    } 
-    else if (cmd.equalsIgnoreCase("NITROUS_360")) {
-      NitrousMBV->move_degrees(360);
-    } 
-    else if (cmd.equalsIgnoreCase("NITROUS_RESET")) {
+    else if (cmd.indexOf("NITROUS_MBV_") >= 0) {
+      String degrees = cmd.substring(11);
+      if(degrees.indexOf("N") >= 0) {
+        NitrousMBV->next_90();
+      } else if(degrees.toInt()) {
+        NitrousMBV->move_degrees(degrees.toInt());
+      }
+    }
+    else if (cmd.equalsIgnoreCase("NITROUS_MBV_RESET")) {
       NitrousMBV->reset();
       if(full_output) { SerialDual.println("Nitrous MBV position reset to zero"); }
     }
@@ -382,8 +400,23 @@ void loop()
     else if (cmd.equalsIgnoreCase("E_STOP")) {
       EMERGENCY_STOP();
     }
-    else if (cmd.equalsIgnoreCase("COLD_FLOW")) {
-      coldFlowEthane(5000);
+    else if (cmd.indexOf("COLD_FLOW_") >= 0) {
+      String prop = cmd.substring(10, cmd.lastIndexOf("_"));
+      String duration = cmd.substring(cmd.lastIndexOf("_") + 1);
+      if (duration.toInt()) {
+        if (prop.equalsIgnoreCase("ETHANE")) {
+          coldFlowEthane(duration.toInt());
+        } else if (prop.equalsIgnoreCase("NITROUS")) {
+          coldFlowNitrous(duration.toInt());
+        }
+      }
+    }
+    else if (cmd.indexOf("STATIC_FIRE_") >= 0) {
+      String duration = cmd.substring(cmd.lastIndexOf("_") + 1);
+      if (duration.toInt()) {
+        static_fire_duration_ms = duration.toInt();
+        static_fire_initializing = true;
+      }
     }
 
     else {
@@ -391,8 +424,7 @@ void loop()
     }
   }
 
-  // EthaneMBV->update();
-  // NitrousMBV->update();
+  // Scheduling Updates
   EthaneVent.checkScheduledActuation();
   NitrousVent.checkScheduledActuation();
   EthaneRunValve.checkScheduledActuation();
@@ -405,6 +437,29 @@ void loop()
     EthaneHeater2->update();
     NitrousHeater1->update();
     NitrousHeater2->update();
+  }
+
+  // Redlines
+  if (EthaneUpstreamPT.checkRedline()) {
+    SerialDual.println("CRITICAL ERROR: ETHANE PRESSURE REDLINE EXCEEDED");
+    if (EthaneMBV->isOpen()) {
+      EthaneMBV->next_90();
+    }
+    EthaneVent.open();
+    EthaneVent.setNextActuation(10000, false);
+  }
+
+  if (NitrousUpstreamPT.checkRedline()) {
+    SerialDual.println("CRITICAL ERROR: NITROUS PRESSURE REDLINE EXCEEDED");
+    if (NitrousMBV->isOpen()) {
+      NitrousMBV->next_90();
+    }
+    NitrousVent.open();
+    NitrousVent.setNextActuation(10000, false);
+  }
+
+  if(static_fire_initializing) {
+    staticFire();
   }
 
   //delay(10);

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include <StandardCplusplus.h>
+#include <string>
 
 class Transducer {
 private:
@@ -19,11 +21,17 @@ private:
   float i_mA;
   float pressure;
 
+  float redline_pressure;
+  int redline_counts_threshold;
+  int redline_counts = 0;
+
 public:
   Transducer(int pin, float P_MIN, float P_MAX);
   static float barToPSI(float bar);
   static float PSIToBar(float psi);
   float readPressure();
-  void status();
-  void value();
+  String status();
+  String value();
+  void setRedline(float max_pressure, int max_counts);
+  bool checkRedline();
 };

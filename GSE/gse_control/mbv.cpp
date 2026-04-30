@@ -8,7 +8,7 @@ MBV::MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2)
 
   pinMode(pwm_pin, OUTPUT);
   analogWrite(pwm_pin, 0);
-  //enc.write(0);
+  enc.write(0);
 }
 
 bool MBV::next_90() {
@@ -36,7 +36,7 @@ bool MBV::move_degrees(float degrees) {
 }
 
 void MBV::reset() {
-  //enc.write(0);
+  enc.write(0);
   target_position = 0;
 }
 
@@ -82,6 +82,13 @@ long MBV::getCurrentPosition() {
 float MBV::getCurrentDegrees() {
   return getCurrentPosition() / counts_per_degree;
 } 
+
+bool MBV::isOpen() {
+  if (((int)getCurrentDegrees() % 180) < 45 || ((int)getCurrentDegrees() % 180) > 135) {
+    return false;
+  }
+  return true;
+}
 
 void MBV::setNextActuation(int delay, float degrees) {
   scheduled_actuations.push_back({ millis() + (unsigned long)delay, degrees });

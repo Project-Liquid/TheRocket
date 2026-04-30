@@ -5,7 +5,7 @@ Transducer::Transducer(int pin, float P_MIN, float P_MAX) {
   this->V_REF = V_REF;
   this->P_MIN = P_MIN;
   this->P_MAX = P_MAX;
-  I_MAX = 20;//V_REF / R_SHUNT * 1000.0;
+  I_MAX = 20;
 }
 
 static float Transducer::barToPSI(float bar) {
@@ -35,27 +35,33 @@ float Transducer::readPressure() {
   // }
   pressure = (v - 1.0) * (P_MAX - P_MIN) / (V_MAX - V_MIN) + P_MIN;
 
-  //pressure = barToPSI(pressure);
-
   return pressure;
 }
 
-void Transducer::status() {
+String Transducer::status() {
   readPressure();
-  
-  Serial.print("raw = "); Serial.print(raw);
-  Serial.print("  V = "); Serial.print(v, 3);
-  Serial.print(" V  I = "); Serial.print(i_mA, 2);
-  Serial.print(" mA  P = "); Serial.print(pressure, 3);
-  Serial.println(" PSI");
-  Serial2.print("raw = "); Serial2.print(raw);
-  Serial2.print("  V = "); Serial2.print(v, 3);
-  Serial2.print(" V  I = "); Serial2.print(i_mA, 2);
-  Serial2.print(" mA  P = "); Serial2.print(pressure, 3);
-  Serial2.println(" PSI");
+  String output = "";
+  output += "raw = " + String(raw) + " V = " + String(v, 3) + "V  I = " + String(i_mA, 2) + " mA  P = " + String(pressure, 3) + " PSI";
+  return output;
 }
 
-void Transducer::value() {
-  Serial.print(readPressure(), 3);
-  Serial2.print(readPressure(), 3);
+String Transducer::value() {
+  return String(readPressure(), 3);
+}
+
+void Transducer::setRedline(float max_pressure, int max_counts) {
+  redline_pressure = max_pressure;
+  redline_counts_threshold = max_counts;
+}
+
+bool Transducer::checkRedline() {
+  if (readPressure() > redline_pressure) {
+    redline_counts++;
+  } else {
+    redline_counts--;
+  }
+  if (redline_counts > redline_counts_threshold) {
+    return true;
+  }
+  return false;
 }

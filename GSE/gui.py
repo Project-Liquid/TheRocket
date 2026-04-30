@@ -1,6 +1,7 @@
 import sys
 import csv
 import threading
+import math
 from collections import deque
 from datetime import datetime
 
@@ -226,13 +227,14 @@ class GroundStation(QMainWindow):
         left.addWidget(self._build_pt_group())
         left.addWidget(self._build_lc_group())
         left.addWidget(self._build_serial_monitor_group())
+        left.addWidget(self._build_export_group())
         left.addStretch()
 
         right = QVBoxLayout()
         right.addWidget(self._build_valve_group())
         right.addWidget(self._build_mbv_group())
         right.addWidget(self._build_cold_flow_group())
-        right.addWidget(self._build_export_group())
+        right.addWidget(self._build_static_fire_group())
         right.addStretch()
 
         content.addLayout(left, 3)
@@ -296,19 +298,21 @@ class GroundStation(QMainWindow):
         grid = QGridLayout(grp)
         grid.setSpacing(6)
 
-        self.lc_e1 = SensorLabel("Ethane LC1",  "kg")
-        self.lc_e2 = SensorLabel("Ethane LC2",  "kg")
-        self.lc_e3 = SensorLabel("Ethane LC3",  "kg")
-        self.lc_et = SensorLabel("Ethane TOTAL","kg")
-        self.lc_n1 = SensorLabel("Nitrous LC1", "kg")
-        self.lc_n2 = SensorLabel("Nitrous LC2", "kg")
-        self.lc_n3 = SensorLabel("Nitrous LC3", "kg")
-        self.lc_nt = SensorLabel("Nitrous TOTAL","kg")
+        self.lc_e1 = SensorLabel("Ethane LC1",  "lbs")
+        self.lc_e2 = SensorLabel("Ethane LC2",  "lbs")
+        self.lc_e3 = SensorLabel("Ethane LC3",  "lbs")
+        self.lc_et = SensorLabel("Ethane TOTAL","lbs")
+        self.lc_n1 = SensorLabel("Nitrous LC1", "lbs")
+        self.lc_n2 = SensorLabel("Nitrous LC2", "lbs")
+        self.lc_n3 = SensorLabel("Nitrous LC3", "lbs")
+        self.lc_nt = SensorLabel("Nitrous TOTAL","lbs")
+        self.lc_t = SensorLabel("Thrust LC", "lbs")
 
         for i, w in enumerate([self.lc_e1, self.lc_e2, self.lc_e3, self.lc_et]):
             grid.addWidget(w, 0, i)
         for i, w in enumerate([self.lc_n1, self.lc_n2, self.lc_n3, self.lc_nt]):
             grid.addWidget(w, 1, i)
+        grid.addWidget(self.lc_t, 2, 1, 1, 2)
         return grp
 
     def _build_valve_group(self):
@@ -356,10 +360,10 @@ class GroundStation(QMainWindow):
         ethane_btn_layout = QHBoxLayout()
         btn_e_10 = QPushButton("+10°")
         btn_e_10.setFont(QFont("Courier New", 9))
-        btn_e_10.clicked.connect(lambda: self.send_fn("ETHANE_10"))
+        btn_e_10.clicked.connect(lambda: self.send_fn("ETHANE_MBV_10"))
         btn_e_90 = QPushButton("+90°")
         btn_e_90.setFont(QFont("Courier New", 9))
-        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_90"))
+        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_MBV_90"))
         ethane_btn_layout.addWidget(btn_e_10)
         ethane_btn_layout.addWidget(btn_e_90)
         ethane_layout.addLayout(ethane_btn_layout)
@@ -376,7 +380,7 @@ class GroundStation(QMainWindow):
         nitrous_btn_layout = QHBoxLayout()
         btn_n_10 = QPushButton("+10°")
         btn_n_10.setFont(QFont("Courier New", 9))
-        btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_10"))
+        btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_MBV_10"))
         btn_n_90 = QPushButton("+90°")
         btn_n_90.setFont(QFont("Courier New", 9))
         btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_90"))
@@ -427,6 +431,38 @@ class GroundStation(QMainWindow):
         layout.addLayout(time_layout)
         layout.addWidget(self.cf_btn)
         layout.addWidget(self.cf_status)
+        return grp
+
+    def _build_static_fire_group(self):
+        grp = QGroupBox("STATIC FIRE")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
+
+        time_layout = QHBoxLayout()
+        time_lbl = QLabel("Run time (s):")
+        time_lbl.setFont(QFont("Courier New", 9))
+        self.sf_time = QSpinBox()
+        self.sf_time.setRange(1, 600)
+        self.sf_time.setValue(10)
+        time_layout.addWidget(time_lbl)
+        time_layout.addWidget(self.sf_time)
+
+        self.sf_btn = QPushButton("🔥  START STATIC FIRE")
+        self.sf_btn.setFixedHeight(42)
+        self.sf_btn.setFont(QFont("Courier New", 10, QFont.Bold))
+        self.sf_btn.setStyleSheet(
+            "background:#1f6feb; color:#fff; border-radius:4px; border:2px solid #388bfd;"
+        )
+        self.sf_btn.clicked.connect(self._start_static_fire)
+
+        self.sf_status = QLabel("Ready")
+        self.sf_status.setFont(QFont("Courier New", 8))
+        self.sf_status.setStyleSheet("color:#8b949e;")
+
+        layout.addLayout(time_layout)
+        layout.addWidget(self.sf_btn)
+        layout.addWidget(self.sf_status)
         return grp
 
     def _build_export_group(self):
@@ -493,7 +529,7 @@ class GroundStation(QMainWindow):
         self.curve_nit_up = self.pt_chart.plot(pen=pg.mkPen('#ff7b72', width=2), name="Nit Up")
         self.curve_nit_dn = self.pt_chart.plot(pen=pg.mkPen('#ffa198', width=1), name="Nit Dn")
 
-        self.lc_chart = pg.PlotWidget(title="Propellant Mass (kg)")
+        self.lc_chart = pg.PlotWidget(title="Propellant Mass (lbs)")
         self.lc_chart.addLegend()
         self.lc_chart.showGrid(x=True, y=True, alpha=0.2)
         self.curve_lc_et  = self.lc_chart.plot(pen=pg.mkPen('#3fb950', width=2), name="Ethane")
@@ -554,46 +590,70 @@ class GroundStation(QMainWindow):
         t = state.get('millis', 0) / 1000.0
 
         # PT readouts
-        et_up  = state.get('PT_EU',  0.0)
-        et_dn  = state.get('PT_ED',  0.0)
-        nit_up = state.get('PT_NU', 0.0)
-        nit_dn = state.get('PT_ND', 0.0)
-        self.pt_et_up.update_value(et_up)
-        self.pt_et_dn.update_value(et_dn)
-        self.pt_nit_up.update_value(nit_up)
-        self.pt_nit_dn.update_value(nit_dn)
+        et_up  = state.get('PT_EU', float('nan'))
+        et_dn  = state.get('PT_ED', float('nan'))
+        nit_up = state.get('PT_NU', float('nan'))
+        nit_dn = state.get('PT_ND', float('nan'))
+        if 'PT_EU' in state:
+            self.pt_et_up.update_value(et_up)
+        if 'PT_ED' in state:
+            self.pt_et_dn.update_value(et_dn)
+        if 'PT_NU' in state:
+            self.pt_nit_up.update_value(nit_up)
+        if 'PT_ND' in state:
+            self.pt_nit_dn.update_value(nit_dn)
 
         # LC readouts
-        lc1 = state.get('LC_E1', 0.0)
-        lc2 = state.get('LC_E2', 0.0)
-        lc3 = state.get('LC_E3', 0.0)
-        et_total = lc1 + lc2 + lc3
-        n1  = state.get('LC_N1', 0.0)
-        n2  = state.get('LC_N2', 0.0)
-        n3  = state.get('LC_N3', 0.0)
-        nit_total = n1 + n2 + n3
-        self.lc_e1.update_value(lc1)
-        self.lc_e2.update_value(lc2)
-        self.lc_e3.update_value(lc3)
-        self.lc_et.update_value(et_total)
-        self.lc_n1.update_value(n1)
-        self.lc_n2.update_value(n2)
-        self.lc_n3.update_value(n3)
-        self.lc_nt.update_value(nit_total)
+        lc1 = state.get('LC_E1', 0.0) if 'LC_E1' in state else 0.0
+        lc2 = state.get('LC_E2', 0.0) if 'LC_E2' in state else 0.0
+        lc3 = state.get('LC_E3', 0.0) if 'LC_E3' in state else 0.0
+        et_total = lc1 + lc2 + lc3 if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']) else float('nan')
+        n1  = state.get('LC_N1', 0.0) if 'LC_N1' in state else 0.0
+        n2  = state.get('LC_N2', 0.0) if 'LC_N2' in state else 0.0
+        n3  = state.get('LC_N3', 0.0) if 'LC_N3' in state else 0.0
+        nit_total = n1 + n2 + n3 if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']) else float('nan')
+        
+        if 'LC_E1' in state:
+            self.lc_e1.update_value(lc1)
+        if 'LC_E2' in state:
+            self.lc_e2.update_value(lc2)
+        if 'LC_E3' in state:
+            self.lc_e3.update_value(lc3)
+        if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
+            self.lc_et.update_value(et_total)
+        if 'LC_N1' in state:
+            self.lc_n1.update_value(n1)
+        if 'LC_N2' in state:
+            self.lc_n2.update_value(n2)
+        if 'LC_N3' in state:
+            self.lc_n3.update_value(n3)
+        if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
+            self.lc_nt.update_value(nit_total)
+
+        # Thrust load cell
+        lc_t = state.get('LC_T', float('nan'))
+        if 'LC_T' in state:
+            self.lc_t.update_value(lc_t)
 
         # MBV positions
-        mbv_e = state.get('MBV_E', 0.0)
-        mbv_n = state.get('MBV_N', 0.0)
+        mbv_e = state.get('MBV_E', float('nan'))
+        mbv_n = state.get('MBV_N', float('nan'))
         self.mbv_e_pos = mbv_e
         self.mbv_n_pos = mbv_n
-        self.mbv_e_display.update_value(mbv_e)
-        self.mbv_n_display.update_value(mbv_n)
+        if 'MBV_E' in state:
+            self.mbv_e_display.update_value(mbv_e)
+        if 'MBV_N' in state:
+            self.mbv_n_display.update_value(mbv_n)
 
         # Valve states from firmware flags (re-enable if firmware emits these)
-        self.btn_erv.set_state(bool(state.get('ERV', 0)))
-        self.btn_ev.set_state( bool(state.get('EV',  0)))
-        self.btn_nrv.set_state(bool(state.get('NRV', 0)))
-        self.btn_nv.set_state( bool(state.get('NV',  0)))
+        if 'ERV' in state:
+            self.btn_erv.set_state(bool(state.get('ERV', 0)))
+        if 'EV' in state:
+            self.btn_ev.set_state(bool(state.get('EV', 0)))
+        if 'NRV' in state:
+            self.btn_nrv.set_state(bool(state.get('NRV', 0)))
+        if 'NV' in state:
+            self.btn_nv.set_state(bool(state.get('NV', 0)))
 
         # Charts
         self.t_hist.append(t)
@@ -604,24 +664,67 @@ class GroundStation(QMainWindow):
         self.lc_et_hist.append(et_total)
         self.lc_nit_hist.append(nit_total)
 
+        # Only plot valid (non-NaN) values
         tl = list(self.t_hist)
-        self.curve_et_up.setData(tl, list(self.et_up_hist))
-        self.curve_et_dn.setData(tl, list(self.et_dn_hist))
-        self.curve_nit_up.setData(tl, list(self.nit_up_hist))
-        self.curve_nit_dn.setData(tl, list(self.nit_dn_hist))
-        self.curve_lc_et.setData(tl, list(self.lc_et_hist))
-        self.curve_lc_nit.setData(tl, list(self.lc_nit_hist))
+        
+        # Filter NaN values for each curve
+        def plot_valid(t_list, val_list):
+            valid_t = [t for t, v in zip(t_list, val_list) if not math.isnan(v)]
+            valid_v = [v for v in val_list if not math.isnan(v)]
+            return valid_t, valid_v
+        
+        t_et_up, v_et_up = plot_valid(tl, list(self.et_up_hist))
+        t_et_dn, v_et_dn = plot_valid(tl, list(self.et_dn_hist))
+        t_nit_up, v_nit_up = plot_valid(tl, list(self.nit_up_hist))
+        t_nit_dn, v_nit_dn = plot_valid(tl, list(self.nit_dn_hist))
+        t_lc_et, v_lc_et = plot_valid(tl, list(self.lc_et_hist))
+        t_lc_nit, v_lc_nit = plot_valid(tl, list(self.lc_nit_hist))
+        
+        self.curve_et_up.setData(t_et_up, v_et_up)
+        self.curve_et_dn.setData(t_et_dn, v_et_dn)
+        self.curve_nit_up.setData(t_nit_up, v_nit_up)
+        self.curve_nit_dn.setData(t_nit_dn, v_nit_dn)
+        self.curve_lc_et.setData(t_lc_et, v_lc_et)
+        self.curve_lc_nit.setData(t_lc_nit, v_lc_nit)
 
         # CSV logging
         if self.logging_active:
-            self.log_rows.append({
-                'time_s': t, 'ET_UP': et_up, 'ET_DN': et_dn,
-                'NIT_UP': nit_up, 'NIT_DN': nit_dn,
-                'LC1': lc1, 'LC2': lc2, 'LC3': lc3, 'ET_TOTAL': et_total,
-                'NLC1': n1, 'NLC2': n2, 'NLC3': n3, 'NIT_TOTAL': nit_total,
-                'ERV': state.get('ERV',0), 'EV': state.get('EV',0),
-                'NRV': state.get('NRV',0), 'NV': state.get('NV',0),
-            })
+            row = {'time_s': t}
+            if 'PT_EU' in state:
+                row['ET_UP'] = state['PT_EU']
+            if 'PT_ED' in state:
+                row['ET_DN'] = state['PT_ED']
+            if 'PT_NU' in state:
+                row['NIT_UP'] = state['PT_NU']
+            if 'PT_ND' in state:
+                row['NIT_DN'] = state['PT_ND']
+            if 'LC_E1' in state:
+                row['LC1'] = state['LC_E1']
+            if 'LC_E2' in state:
+                row['LC2'] = state['LC_E2']
+            if 'LC_E3' in state:
+                row['LC3'] = state['LC_E3']
+            if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
+                row['ET_TOTAL'] = et_total
+            if 'LC_N1' in state:
+                row['NLC1'] = state['LC_N1']
+            if 'LC_N2' in state:
+                row['NLC2'] = state['LC_N2']
+            if 'LC_N3' in state:
+                row['NLC3'] = state['LC_N3']
+            if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
+                row['NIT_TOTAL'] = nit_total
+            if 'LC_T' in state:
+                row['LC_T'] = state['LC_T']
+            if 'ERV' in state:
+                row['ERV'] = state['ERV']
+            if 'EV' in state:
+                row['EV'] = state['EV']
+            if 'NRV' in state:
+                row['NRV'] = state['NRV']
+            if 'NV' in state:
+                row['NV'] = state['NV']
+            self.log_rows.append(row)
             self.log_count_lbl.setText(f"{len(self.log_rows)} rows logged")
 
     def _on_raw_data(self, raw: str):
@@ -647,8 +750,21 @@ class GroundStation(QMainWindow):
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            self.send_fn(f"COLD_FLOW_{side}_{run_time}")
+            run_time_ms = run_time * 1000
+            self.send_fn(f"COLD_FLOW_{side}_{run_time_ms}")
             self.cf_status.setText(f"Running {side} for {run_time}s...")
+
+    def _start_static_fire(self):
+        run_time = self.sf_time.value()
+        reply = QMessageBox.question(
+            self, "Confirm Static Fire",
+            f"Run static fire for {run_time}s?\n\nThis will ignite the engine.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            run_time_ms = run_time * 1000
+            self.send_fn(f"STATIC_FIRE_{run_time_ms}")
+            self.sf_status.setText(f"Running for {run_time}s...")
 
     def _toggle_logging(self):
         self.logging_active = not self.logging_active

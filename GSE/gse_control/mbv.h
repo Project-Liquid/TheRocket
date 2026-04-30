@@ -41,6 +41,7 @@ public:
   void status();
   long getCurrentPosition();
   float getCurrentDegrees();
+  bool isOpen();
   void setNextActuation(int delay, float degrees = 90);
   void checkScheduledActuation();
   void clearSchedule();
