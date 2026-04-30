@@ -55,12 +55,17 @@ void Transducer::setRedline(float max_pressure, int max_counts) {
 }
 
 bool Transducer::checkRedline() {
-  if (readPressure() > redline_pressure) {
+  pressure = readPressure();
+
+  if (pressure > redline_pressure) {
     redline_counts++;
-  } else {
+    Serial.print("Extreme pressure: "); Serial.println(pressure);
+  } else if (redline_counts > 0) {
     redline_counts--;
   }
+
   if (redline_counts > redline_counts_threshold) {
+    redline_counts = 0;
     return true;
   }
   return false;

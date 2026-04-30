@@ -8,6 +8,8 @@
 #include "serial.h"
 #include <StandardCplusplus.h>
 #include <string>
+#include "ADS1118.h"
+#include <SPI.h>
 
 // Run Control
 bool print_data = true;
@@ -29,6 +31,7 @@ LogInterval PTLog{50, 0};
 LogInterval LCLog{200, 0};
 LogInterval ValveLog{200, 0};
 LogInterval MBVLog{200, 0};
+LogInterval TCLog{200, 0};
 
 // Pressure Transducers
 const int ETHANE_UPSTREAM_PIN = A12;
@@ -50,7 +53,7 @@ Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
 // Solenoids
 const int ETHANE_RUN_PIN = 47;
 const int ETHANE_VENT_PIN = 46;
-const int NITROUS_RUN_PIN = 53;
+const int NITROUS_RUN_PIN = 36;
 const int NITROUS_VENT_PIN = 40;
 
 Solenoid EthaneRunValve(ETHANE_RUN_PIN);
@@ -82,10 +85,14 @@ Heater* EthaneHeater2;
 Heater* NitrousHeater1;
 Heater* NitrousHeater2;
 
+const float ETHANE_TARGET_PRESSURE = 90;
+const float NITROUS_TARGET_PRESSURE = 90;
+
 // Thermocouple
 Thermocouple* RerouteTC;
 Thermocouple* RerouteTC2;
 Thermocouple* RerouteTC3;
+ADS1118* ChamberTC;
 
 // Serial Communication for Radios
 SerialDualClass SerialDual(Serial, Serial2);
@@ -171,11 +178,23 @@ void status(bool verbose = true) {
       ValveLog.last_trigger_ms = time - (time % ValveLog.interval_ms);
     }
 
+    if(time - TCLog.last_trigger_ms >= TCLog.interval_ms) {
+      // datastream += "|TC_C:" + String(ChamberTC->getTemperature());
+      datastream += "|TC_R:" + String(RerouteTC->readHot());
+      TCLog.last_trigger_ms = time - (time % TCLog.interval_ms);
+    }
+
     if (datastream.lastIndexOf("|") > 4) SerialDual.println(datastream);
   }
 }
 
 void EMERGENCY_STOP() {
+  if (EthaneMBV->isOpen()) {
+    EthaneMBV->next_90();
+  }
+  if (NitrousMBV->isOpen()) {
+    NitrousMBV->next_90();
+  }
   ventEthane();
   ventNitrous();
 }
@@ -219,7 +238,7 @@ void staticFire() {
 
   //Ignitor.setNextActutation(5000);
   delay(1000); // REMOVE REMOVE REMOVE
-  //if (RerouteTC->readHot() > 212) {
+  //if (ChamberTC->getTemperature() > 100) {
     //NitrousMBV->next_90();
     EthaneMBV->setNextActuation(200);
     //NitrousMBV->setNextActuation(200 + static_fire_duration_ms);
@@ -270,10 +289,24 @@ void setup()
   RerouteTC2 = new Thermocouple(0x65);
   RerouteTC3 = new Thermocouple(0x66);
 
+  pinMode(53, OUTPUT);      // Force SS high to lock Mega in master mode
+  digitalWrite(53, HIGH);
+  ChamberTC = new ADS1118(53);
+  delay(100);
+
+  ChamberTC->setSamplingRate(ChamberTC->RATE_860SPS);
+  ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
+  ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
+
   EthaneHeater1 = new Heater(49, &EthaneUpstreamPT);
   EthaneHeater2 = new Heater(41, &EthaneUpstreamPT);
   NitrousHeater1 = new Heater(43, &NitrousUpstreamPT);
   NitrousHeater2 = new Heater(45, &NitrousUpstreamPT);
+
+  EthaneHeater1->setTarget(ETHANE_TARGET_PRESSURE);
+  EthaneHeater2->setTarget(ETHANE_TARGET_PRESSURE);
+  NitrousHeater1->setTarget(NITROUS_TARGET_PRESSURE);
+  NitrousHeater2->setTarget(NITROUS_TARGET_PRESSURE);
 
   EthaneUpstreamPT.setRedline(1100, 25);
   NitrousUpstreamPT.setRedline(1100, 25);
@@ -383,7 +416,7 @@ void loop()
       EthaneMBV->status();
     }
     else if (cmd.indexOf("NITROUS_MBV_") >= 0) {
-      String degrees = cmd.substring(11);
+      String degrees = cmd.substring(12);
       if(degrees.indexOf("N") >= 0) {
         NitrousMBV->next_90();
       } else if(degrees.toInt()) {
