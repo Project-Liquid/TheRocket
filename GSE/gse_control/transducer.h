@@ -24,6 +24,16 @@ private:
   float redline_pressure;
   int redline_counts_threshold;
   int redline_counts = 0;
+  // Add these to your class header (.h file):
+  static const int SG_WINDOW = 51;
+  static const int SG_POLY = 3;
+  float _pressureBuffer[75];
+  int _bufferIndex;
+  int _bufferCount;
+  float _sgCoeffs[75];
+  void _computeSGCoeffs();
+  bool _sgReady;
+
 
 public:
   Transducer(int pin, float P_MIN, float P_MAX);
