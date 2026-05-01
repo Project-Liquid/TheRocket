@@ -40,6 +40,9 @@ void MBV::reset() {
   target_position = 0;
 }
 
+/**
+ * Checks if at target position
+ */
 void MBV::update() {
   current_position = enc.read();
   if (moving) {

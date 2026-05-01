@@ -12,16 +12,36 @@
 #include <SPI.h>
 
 // Run Control
-bool print_data = true;
+bool print_data = true; // Will always be true
 long start_time = 0; //1410065408; // max value placeholder
+
+/**
+ * Maximum miliseconds of runtime.
+ * Note: Does not stop if negative
+ */
 const int runtime = -1;
 //static unsigned long lastPressureMs = 0;
 //const int log_interval_ms = 50;
+/**
+ * Gives diagnostic with full details if true, otherwise gives simplified output for logging.
+ * Note: Full output is not recommended for long runs due to performance constraints
+ * of Serial printing every loop, which can cause lag and missed readings. Use
+ * full output for debugging and simplified output for extended
+ */
 const bool full_output = false;
+
+/**
+ * Current Groundtime
+ * - Defined as milis() - start_time */
 long elapsed = 0;
 bool static_fire_initializing = false;
 long static_fire_duration_ms = 0;
 
+/**
+ * The timing of each thing in data log
+ * - Has the interval at which to log, and the last time it was logged,
+ * so we can check if it's time to log again
+ */
 struct LogInterval {
   const unsigned int interval_ms;
   unsigned long last_trigger_ms;
@@ -40,7 +60,7 @@ const int NITROUS_UPSTREAM_PIN = A10;
 const int NITROUS_DOWNSTREAM_PIN = A9;
 const int REROUTE_PT_PIN = A8;
 
-const float P_MIN = 0.0;
+const float P_MIN = 0.0; // PSIG
 const float P_MAX_ETHANE = 1000;
 const float P_MAX_NITROUS = 1500;
 
@@ -92,21 +112,32 @@ const float NITROUS_TARGET_PRESSURE = 90;
 Thermocouple* RerouteTC;
 Thermocouple* RerouteTC2;
 Thermocouple* RerouteTC3;
-ADS1118* ChamberTC;
+/** TODO: This doesn't really work */
+ADS1118* ChamberTC; 
 
-// Serial Communication for Radios
+/** Serial Communication for Radios
+ * - Serial1 is hardline
+ * - Serial2 is radio
+*/
 SerialDualClass SerialDual(Serial, Serial2);
 
 //===========================FUNCTIONS============================//
+/** MARK: Helpers */
 
+/** Combine LC readings */
 float readEthaneLC() {
   return EthaneLC1->read(1) + EthaneLC2->read(1) + EthaneLC3->read(1);
 }
 
+/** Combine LC readings */
 float readNitrousLC() {
   return NitrousLC1->read(1) + NitrousLC2->read(1) + NitrousLC3->read(1);
 }
 
+/**
+ * Our output function.
+ * Note: Some features commented out to speed running.
+ */
 void status(bool verbose = true) {
   elapsed = millis()-start_time;
 
@@ -179,6 +210,7 @@ void status(bool verbose = true) {
     }
 
     if(time - TCLog.last_trigger_ms >= TCLog.interval_ms) {
+      /** TODO: If you uncomment the line below, code will stop. Whoops. */
       // datastream += "|TC_C:" + String(ChamberTC->getTemperature());
       datastream += "|TC_R:" + String(RerouteTC->readHot());
       TCLog.last_trigger_ms = time - (time % TCLog.interval_ms);
@@ -188,7 +220,15 @@ void status(bool verbose = true) {
   }
 }
 
-void EMERGENCY_STOP() {
+void EMERGENCY_VENT() {
+  // clear the schedules
+  EthaneVent.clearSchedule();
+  NitrousVent.clearSchedule();
+  EthaneRunValve.clearSchedule();
+  NitrousRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+  NitrousMBV->clearSchedule();
+
   if (EthaneMBV->isOpen()) {
     EthaneMBV->next_90();
   }
@@ -232,6 +272,11 @@ void coldFlowNitrous(long duration_ms) {
   NitrousRunValve.setNextActuation(10000 + duration_ms, false);
 }
 
+/**
+ * TODO: Try to do #defines for all the timing values in this function, and
+ * make them more intuitive (e.g. "DELAY_BEFORE_MBV",
+ * "DELAY_BEFORE_RUN_VALVE_CLOSE", etc.)
+ */
 void staticFire() {
   //NitrousRunValve.open();
   EthaneRunValve.open();
@@ -257,6 +302,10 @@ void staticFire() {
 }
 
 //===========================EXECUTION============================//
+/**
+ * MARK: Execution
+ * */ 
+
 void setup()
 {
   SerialDual.begin(57600);
@@ -294,6 +343,7 @@ void setup()
   ChamberTC = new ADS1118(53);
   delay(100);
 
+  ChamberTC->begin();
   ChamberTC->setSamplingRate(ChamberTC->RATE_860SPS);
   ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
   ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
@@ -387,7 +437,7 @@ void loop()
       if(full_output) { SerialDual.println("NITROUS RUN VALVE CLOSED"); }
     } 
     
-    // run control
+    // run control -- this is now depreciated
     else if (cmd.equalsIgnoreCase("START")) {
       print_data = true;
       start_time = millis();
@@ -431,7 +481,7 @@ void loop()
       NitrousMBV->status();
     }
     else if (cmd.equalsIgnoreCase("E_STOP")) {
-      EMERGENCY_STOP();
+      EMERGENCY_VENT();
     }
     else if (cmd.indexOf("COLD_FLOW_") >= 0) {
       String prop = cmd.substring(10, cmd.lastIndexOf("_"));
