@@ -19,6 +19,9 @@ from PyQt5.QtGui import QFont, QColor, QPalette
 
 import pyqtgraph as pg
 
+import pickle
+from pathlib import Path
+
 
 # ─────────────────────────────────────────
 #  Serial Worker (runs in background thread)
@@ -28,7 +31,7 @@ class SerialWorker(QObject):
     raw_received = pyqtSignal(str)  # Raw serial line for monitor
     connection_lost = pyqtSignal()
 
-    def __init__(self, port, baud=57600):
+    def __init__(self, port, baud=57600): # New baud rate
         super().__init__()
         self.port = port
         self.baud = baud
@@ -208,6 +211,12 @@ class GroundStation(QMainWindow):
 
         self._build_ui()
 
+        # Folder directory to save data
+        self.parent_folder = Path(Path.cwd().as_posix() + "/stream_data")
+        self.log_start_time: datetime | None = None
+        self.log_folder_path: Path | None = None
+
+
     # ── UI Construction ──────────────────────────────────────────
     def _build_ui(self):
         central = QWidget()
@@ -281,6 +290,8 @@ class GroundStation(QMainWindow):
         grid = QGridLayout(grp)
         grid.setSpacing(6)
 
+        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
+        # once redlines are determined by fluids.
         self.pt_et_up  = SensorLabel("Ethane Upstream",   "psi", warning_hi=900)
         self.pt_et_dn  = SensorLabel("Ethane Downstream", "psi", warning_hi=900)
         self.pt_nit_up = SensorLabel("Nitrous Upstream",  "psi", warning_hi=1400)
@@ -572,6 +583,7 @@ class GroundStation(QMainWindow):
         self.status_lbl.setText("● Connected")
         self.status_lbl.setStyleSheet("color:#3fb950;")
 
+    # TODO: If CSV is recording, make sure to finalize and save the file on disconnect
     def _disconnect(self):
         if self.worker:
             self.worker.stop()
@@ -725,7 +737,20 @@ class GroundStation(QMainWindow):
             if 'NV' in state:
                 row['NV'] = state['NV']
             self.log_rows.append(row)
-            self.log_count_lbl.setText(f"{len(self.log_rows)} rows logged")
+
+            # Backup Data Storage
+            num_rows = len(self.log_rows)
+            self.log_count_lbl.setText(f"{num_rows} rows logged")
+            PACKET_SIZE = 20 # how many rows to save per pickle file
+
+            if self.logging_active and num_rows % PACKET_SIZE == 0 and self.log_folder_path is not None:
+                path = self.log_folder_path / f"data-{num_rows}.pkl"
+
+                # Create folder if it doesn't exist
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "wb") as f:
+                    pickle.dump(self.log_rows[-PACKET_SIZE:], f)
+
 
     def _on_raw_data(self, raw: str):
         """Append raw serial line to monitor."""
@@ -769,7 +794,10 @@ class GroundStation(QMainWindow):
     def _toggle_logging(self):
         self.logging_active = not self.logging_active
         if self.logging_active:
+            # This means logging just start.
             self.log_rows.clear()
+            self.log_start_time = datetime.now()
+            self.log_folder_path = self.parent_folder / self.log_start_time.strftime('%Y-%m-%d_%H-%M-%S')
             self.log_btn.setText("⏹  Stop Logging")
             self.log_btn.setStyleSheet("background:#da3633; color:#fff; border-radius:4px;")
         else:
@@ -780,10 +808,15 @@ class GroundStation(QMainWindow):
         if not self.log_rows:
             QMessageBox.information(self, "No Data", "No logged data to export.")
             return
-        fname, _ = QFileDialog.getSaveFileName(
-            self, "Save CSV", f"gse_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            "CSV Files (*.csv)"
-        )
+        
+        if self.log_folder_path is not None and self.log_start_time is not None:
+            fname = self.log_folder_path / f"gse_log_{self.log_start_time.strftime('%Y%m%d_%H%M%S')}.csv"
+        else:
+            fname, _ = QFileDialog.getSaveFileName(
+                self, "Save CSV", f"gse_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                "CSV Files (*.csv)"
+            )
+        
         if fname:
             with open(fname, 'w', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=self.log_rows[0].keys())
