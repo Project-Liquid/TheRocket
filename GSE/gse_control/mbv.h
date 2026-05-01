@@ -15,7 +15,7 @@ private:
   Encoder enc;
 
   const int MOTOR_FAST = 255;
-  const int MOTOR_SLOW = 215;
+  const int MOTOR_SLOW = 190;
   const int SLOW_ZONE = 150;
   const int STOP_ZONE = 5;
   const int TIMEOUT_MS = 3000;
@@ -23,7 +23,8 @@ private:
 
   const float counts_per_motor_rev = 751.8;
   const float gear_ratio = (30.0 / 14.0);
-  const float counts_per_degree = (counts_per_motor_rev * gear_ratio) / 360.0;
+  const float ff = 0.965;
+  const float counts_per_degree = (ff * counts_per_motor_rev * gear_ratio) / 360.0;
   const float counts_per_90 = (long)(90 * counts_per_degree);
 
   struct ScheduledActuation {

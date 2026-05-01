@@ -106,3 +106,40 @@ static void LoadCell::calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCel
     }
   }
 }
+
+void LoadCell::join(LoadCell* LC2, LoadCell* LC3) {
+  this->LC2 = LC2;
+  this->LC3 = LC3;
+  joint = true;
+}
+
+float LoadCell::readJoint(int samples) {
+  if (joint) {
+    return this->read(samples) + LC2->read(samples) + LC3->read(samples);
+  }
+  return -1;
+}
+
+void LoadCell::setRedline(float min_weight, int max_counts) {
+  this->redline_weight = min_weight;
+  this->redline_counts_threshold = max_counts;
+}
+
+bool LoadCell::checkRedline() {
+  if (!joint) return false;
+  float weight = readJoint(1);
+
+  if (weight < redline_weight) {
+    redline_counts++;
+    Serial.print("Extreme weight: "); Serial.println(weight);
+  } else if (redline_counts > 0) {
+    redline_counts--;
+  }
+
+  if (redline_counts > redline_counts_threshold) {
+    redline_counts = 0;
+    return true;
+  }
+  return false;
+}
+

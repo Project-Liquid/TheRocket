@@ -8,12 +8,23 @@ private:
   HX711 scale;
   float cal = 0;
   int gain;
+  LoadCell* LC2 = nullptr;
+  LoadCell* LC3 = nullptr;
+  bool joint = false;
+  
+  float redline_weight;
+  int redline_counts_threshold;
+  int redline_counts = 0;
 
 public:
   LoadCell(int DT_PIN, int SCK_PIN, int gain = 128);
   float getAverage(int samples = 100);
   float calibrateCell(float knownWeight);
   void setCalFactor(float calFactor);
-  float read(int samples = 50);
-  static void LoadCell::calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3);
+  float read(int samples = 1);
+  static void calibrateCells(LoadCell &scale1, LoadCell &scale2, LoadCell &scale3);
+  void join(LoadCell* LC2, LoadCell* LC3);
+  float readJoint(int samples = 1);
+  void setRedline(float min_weight, int max_counts);
+  bool checkRedline();
 };
