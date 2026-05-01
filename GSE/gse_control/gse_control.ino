@@ -259,11 +259,12 @@ void staticFire() {
 //===========================EXECUTION============================//
 void setup()
 {
+  // TURN SERIAL OFF; TURN SERIAL2 ON
+  SerialDual.setActive(false, true);
   SerialDual.begin(57600);
   //SerialDual.flush();
   SerialDual.println("START");
   delay(2000);
-
 
   EthaneMBV = new MBV(ETHANE_MBV_PIN, 44, 42);
   NitrousMBV = new MBV(NITROUS_MBV_PIN, 38, 48);
