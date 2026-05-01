@@ -1,125 +1,5 @@
-#include "transducer.h"
-#include "solenoid.h"
-#include "mbv.h"
-#include "loadCell.h"
-#include "thermocouple.h"
-#include "heater.h"
-#include "thrustCell.h"
-#include "serial.h"
-#include <StandardCplusplus.h>
-#include <string>
-#include "ADS1118.h"
-#include <SPI.h>
+#include "main.h"
 
-// Run Control
-bool print_data = true; // Will always be true
-long start_time = 0; //1410065408; // max value placeholder
-
-/**
- * Maximum miliseconds of runtime.
- * Note: Does not stop if negative
- */
-const int runtime = -1;
-//static unsigned long lastPressureMs = 0;
-//const int log_interval_ms = 50;
-/**
- * Gives diagnostic with full details if true, otherwise gives simplified output for logging.
- * Note: Full output is not recommended for long runs due to performance constraints
- * of Serial printing every loop, which can cause lag and missed readings. Use
- * full output for debugging and simplified output for extended
- */
-const bool full_output = false;
-
-/**
- * Current Groundtime
- * - Defined as milis() - start_time */
-long elapsed = 0;
-bool static_fire_initializing = false;
-long static_fire_duration_ms = 0;
-
-/**
- * The timing of each thing in data log
- * - Has the interval at which to log, and the last time it was logged,
- * so we can check if it's time to log again
- */
-struct LogInterval {
-  const unsigned int interval_ms;
-  unsigned long last_trigger_ms;
-};
-
-LogInterval PTLog{50, 0};
-LogInterval LCLog{200, 0};
-LogInterval ValveLog{200, 0};
-LogInterval MBVLog{200, 0};
-LogInterval TCLog{200, 0};
-
-// Pressure Transducers
-const int ETHANE_UPSTREAM_PIN = A12;
-const int ETHANE_DOWNSTREAM_PIN = A11;
-const int NITROUS_UPSTREAM_PIN = A10;
-const int NITROUS_DOWNSTREAM_PIN = A9;
-const int REROUTE_PT_PIN = A8;
-
-const float P_MIN = 0.0; // PSIG
-const float P_MAX_ETHANE = 1000;
-const float P_MAX_NITROUS = 1500;
-
-Transducer EthaneUpstreamPT(ETHANE_UPSTREAM_PIN, P_MIN, P_MAX_ETHANE);
-Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
-Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
-Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
-Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
-
-// Solenoids
-const int ETHANE_RUN_PIN = 47;
-const int ETHANE_VENT_PIN = 46;
-const int NITROUS_RUN_PIN = 36;
-const int NITROUS_VENT_PIN = 40;
-
-Solenoid EthaneRunValve(ETHANE_RUN_PIN);
-Solenoid EthaneVent(ETHANE_VENT_PIN);
-Solenoid NitrousRunValve(NITROUS_RUN_PIN);
-Solenoid NitrousVent(NITROUS_VENT_PIN);
-
-// Motorized Ball Valves
-const int ETHANE_MBV_PIN = 6;
-const int NITROUS_MBV_PIN = 7;
-
-MBV* EthaneMBV;
-MBV* NitrousMBV;
-
-// Load Cells
-LoadCell* EthaneLC2;
-LoadCell* EthaneLC1;
-LoadCell* EthaneLC3;
-LoadCell* NitrousLC1;
-LoadCell* NitrousLC2;
-LoadCell* NitrousLC3;
-
-ThrustCell* ThrustLC;
-
-// Tank Heaters
-bool heaters_active = false;
-Heater* EthaneHeater1;
-Heater* EthaneHeater2;
-Heater* NitrousHeater1;
-Heater* NitrousHeater2;
-
-const float ETHANE_TARGET_PRESSURE = 90;
-const float NITROUS_TARGET_PRESSURE = 90;
-
-// Thermocouple
-Thermocouple* RerouteTC;
-Thermocouple* RerouteTC2;
-Thermocouple* RerouteTC3;
-/** TODO: This doesn't really work. */
-ADS1118* ChamberTC; 
-
-/** Serial Communication for Radios
- * - Serial1 is hardline
- * - Serial2 is radio
-*/
-SerialDualClass SerialDual(Serial, Serial2);
 
 //===========================FUNCTIONS============================//
 /** MARK: Helpers */
@@ -220,181 +100,8 @@ void status(bool verbose = true) {
   }
 }
 
-void EMERGENCY_VENT() {
-  // clear the schedules
-  EthaneVent.clearSchedule();
-  NitrousVent.clearSchedule();
-  EthaneRunValve.clearSchedule();
-  NitrousRunValve.clearSchedule();
-  EthaneMBV->clearSchedule();
-  NitrousMBV->clearSchedule();
-
-  if (EthaneMBV->isOpen()) {
-    EthaneMBV->next_90();
-  }
-  if (NitrousMBV->isOpen()) {
-    NitrousMBV->next_90();
-  }
-  ventEthane();
-  ventNitrous();
-}
-
-void ventEthane() {
-  EthaneRunValve.close();
-  EthaneVent.setNextActuation(1000, true);
-  EthaneVent.setNextActuation(4000, false);
-}
-
-void ventNitrous() {
-  NitrousRunValve.close();
-  NitrousVent.setNextActuation(1000, true);
-  NitrousVent.setNextActuation(4000, false);
-}
-
-void coldFlowEthane(long duration_ms) {
-  EthaneRunValve.clearSchedule();
-  EthaneMBV->clearSchedule();
-
-  EthaneRunValve.open();
-
-  EthaneMBV->setNextActuation(5000);
-  EthaneMBV->setNextActuation(5000 + duration_ms);
-
-  EthaneRunValve.setNextActuation(10000 + duration_ms, false);
-}
-
-void coldFlowNitrous(long duration_ms) {
-  NitrousRunValve.open();
-
-  NitrousMBV->setNextActuation(5000);
-  NitrousMBV->setNextActuation(5000 + duration_ms);
-
-  NitrousRunValve.setNextActuation(10000 + duration_ms, false);
-}
-
-/**
- * TODO: Try to do #defines for all the timing values in this function, and
- * make them more intuitive (e.g. "DELAY_BEFORE_MBV",
- * "DELAY_BEFORE_RUN_VALVE_CLOSE", etc.)
- */
-void staticFire() {
-  //NitrousRunValve.open();
-  EthaneRunValve.open();
-
-  //Ignitor.setNextActutation(5000);
-  delay(1000); // REMOVE REMOVE REMOVE
-  //if (ChamberTC->getTemperature() > 100) {
-    //NitrousMBV->next_90();
-    EthaneMBV->setNextActuation(200);
-    //NitrousMBV->setNextActuation(200 + static_fire_duration_ms);
-    EthaneMBV->setNextActuation(200 + static_fire_duration_ms + 500);
-    //NitrousRunValve.setNextActuation(200 + static_fire_duration_ms+600, false);
-    EthaneRunValve.setNextActuation(200 + static_fire_duration_ms + 600, false);
-    
-    // Vent
-    EthaneVent.setNextActuation(800 + static_fire_duration_ms + 1000, true);
-    EthaneVent.setNextActuation(800 + static_fire_duration_ms + 4000, false);
-    //NitrousVent.setNextActuation(800 + static_fire_duration_ms + 5000, true);
-    //NitrousVent.setNextActuation(800 + static_fire_duration_ms + 9000, false);
-
-    static_fire_initializing = false;
-  //}
-}
-
-//===========================EXECUTION============================//
-/**
- * MARK: Execution
- * */ 
-
-void setup()
-{
-  // TURN SERIAL OFF; TURN SERIAL2 ON
-  SerialDual.setActive(false, true);
-  SerialDual.begin(57600);
-  //SerialDual.flush();
-  SerialDual.println("START");
-  delay(2000);
-
-  EthaneMBV = new MBV(ETHANE_MBV_PIN, 44, 42);
-  NitrousMBV = new MBV(NITROUS_MBV_PIN, 38, 48);
-
-  EthaneLC1 = new LoadCell(22, 23);
-  EthaneLC2 = new LoadCell(24, 25);
-  EthaneLC3 = new LoadCell(26, 27);
-  NitrousLC1 = new LoadCell(34, 35);
-  NitrousLC2 = new LoadCell(32, 33);
-  NitrousLC3 = new LoadCell(30, 31);
-
-  EthaneLC1->setCalFactor(43.27);
-  EthaneLC2->setCalFactor(43.92);
-  EthaneLC3->setCalFactor(42.46);
-  NitrousLC1->setCalFactor(40.0);
-  NitrousLC2->setCalFactor(40.0);
-  NitrousLC3->setCalFactor(40.0);
-
-  ThrustLC = new ThrustCell();
-  ThrustLC->setCalFactor(-5.83);
-
-  RerouteTC = new Thermocouple(0x67);
-  RerouteTC2 = new Thermocouple(0x65);
-  RerouteTC3 = new Thermocouple(0x66);
-
-  pinMode(53, OUTPUT);      // Force SS high to lock Mega in master mode
-  digitalWrite(53, HIGH);
-  ChamberTC = new ADS1118(53);
-  delay(100);
-
-  ChamberTC->begin();
-  ChamberTC->setSamplingRate(ChamberTC->RATE_860SPS);
-  ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
-  ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
-
-  EthaneHeater1 = new Heater(49, &EthaneUpstreamPT);
-  EthaneHeater2 = new Heater(41, &EthaneUpstreamPT);
-  NitrousHeater1 = new Heater(43, &NitrousUpstreamPT);
-  NitrousHeater2 = new Heater(45, &NitrousUpstreamPT);
-
-  EthaneHeater1->setTarget(ETHANE_TARGET_PRESSURE);
-  EthaneHeater2->setTarget(ETHANE_TARGET_PRESSURE);
-  NitrousHeater1->setTarget(NITROUS_TARGET_PRESSURE);
-  NitrousHeater2->setTarget(NITROUS_TARGET_PRESSURE);
-
-  EthaneUpstreamPT.setRedline(1100, 25);
-  NitrousUpstreamPT.setRedline(1100, 25);
-  
-  delay(1200);
-  if (print_data) {
-    start_time = millis();
-  }
-  if(full_output) {
-    SerialDual.println("Commands:");
-    SerialDual.println("  ETHANE_VENT_ON / ETHANE_VENT_OFF");
-    SerialDual.println("  NITROUS_VENT_ON / NITROUS_VENT_OFF");
-    SerialDual.println("  ETHANE_RUN_ON / ETHANE_RUN_OFF");
-    SerialDual.println("  NITROUS_RUN_ON / NITROUS_RUN_OFF");
-  }
-}
-
-String cmd = "";
-
-void loop()
-{
-  elapsed = millis()-start_time;
-
-  EthaneMBV->update();
-  NitrousMBV->update();
-
-  // LOG
-  if (print_data)
-  {
-    status(full_output);
-  }
-
-  if (elapsed/1000.0 > runtime && runtime >= 0) {
-    print_data = false;
-  }
-
-  // COMMANDS
+void processCommand() {
+  String cmd = "";
   if (Serial.available() || Serial2.available())
   {
     if (Serial.available()) cmd = Serial.readStringUntil('\n');
@@ -438,7 +145,7 @@ void loop()
       if(full_output) { SerialDual.println("NITROUS RUN VALVE CLOSED"); }
     } 
     
-    // run control -- this is now depreciated
+    // run control -- this is now deprecated
     else if (cmd.equalsIgnoreCase("START")) {
       print_data = true;
       start_time = millis();
@@ -507,6 +214,183 @@ void loop()
       if(full_output) { SerialDual.println("Unknown command."); }
     }
   }
+}
+
+void EMERGENCY_VENT() {
+  // clear the schedules
+  EthaneVent.clearSchedule();
+  NitrousVent.clearSchedule();
+  EthaneRunValve.clearSchedule();
+  NitrousRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+  NitrousMBV->clearSchedule();
+
+  if (EthaneMBV->isOpen()) {
+    EthaneMBV->next_90();
+  }
+  if (NitrousMBV->isOpen()) {
+    NitrousMBV->next_90();
+  }
+  ventEthane();
+  ventNitrous();
+}
+
+void ventEthane() {
+  EthaneRunValve.close();
+  EthaneVent.setNextActuation(VENT_DELAY, true);
+  EthaneVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
+}
+
+void ventNitrous() {
+  NitrousRunValve.close();
+  NitrousVent.setNextActuation(VENT_DELAY, true);
+  NitrousVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
+}
+
+void coldFlowEthane(long duration_ms) {
+  EthaneRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+
+  EthaneRunValve.open();
+
+  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME);
+  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
+
+  EthaneRunValve.setNextActuation(10000 + duration_ms, false);
+}
+
+void coldFlowNitrous(long duration_ms) {
+  NitrousRunValve.open();
+
+  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME);
+  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
+
+  NitrousRunValve.setNextActuation(2*RUN_EQUALIZE_TIME + duration_ms, false);
+}
+
+/**
+ * TODO: Try to do #defines for all the timing values in this function, and
+ * make them more intuitive (e.g. "DELAY_BEFORE_MBV",
+ * "DELAY_BEFORE_RUN_VALVE_CLOSE", etc.)
+ */
+void staticFire() {
+  //NitrousRunValve.open();
+  EthaneRunValve.open();
+
+  //Ignitor.setNextActutation(5000);
+  delay(1000); // REMOVE REMOVE REMOVE 
+  // TODO: Replace with logic when ChamberTC works
+  //if (ChamberTC->getTemperature() > 100) {
+    //NitrousMBV->next_90();
+    EthaneMBV->setNextActuation(ETHANE_DELAY);
+    //NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);
+    EthaneMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY);
+    //NitrousRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
+    EthaneRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
+    
+    // Vent
+    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY, true);
+    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY + VENT_TIME, false);
+    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + VENT_TIME + 1100, true);
+    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + 2*VENT_TIME + 1100, false);
+
+    static_fire_initializing = false;
+  //}
+}
+
+//===========================EXECUTION============================//
+/**
+ * MARK: Execution
+ * */ 
+
+void setup()
+{
+  // TURN SERIAL OFF; TURN SERIAL2 ON
+  SerialDual.setActive(false, true);
+  SerialDual.begin(57600);
+  //SerialDual.flush();
+  SerialDual.println("START");
+  delay(2000);
+
+  EthaneMBV = new MBV(ETHANE_MBV_PIN, ETHANE_ENCODER_PIN_1, ETHANE_ENCODER_PIN_2);
+  NitrousMBV = new MBV(NITROUS_MBV_PIN, NITROUS_ENCODER_PIN_1, NITROUS_ENCODER_PIN_2);
+
+  EthaneLC1 = new LoadCell(ETHANE_LC1_PINS);
+  EthaneLC2 = new LoadCell(ETHANE_LC2_PINS);
+  EthaneLC3 = new LoadCell(ETHANE_LC3_PINS);
+  NitrousLC1 = new LoadCell(NITROUS_LC1_PINS);
+  NitrousLC2 = new LoadCell(NITROUS_LC2_PINS);
+  NitrousLC3 = new LoadCell(NITROUS_LC3_PINS);
+
+  EthaneLC1->setCalFactor(43.27);
+  EthaneLC2->setCalFactor(43.92);
+  EthaneLC3->setCalFactor(42.46);
+  NitrousLC1->setCalFactor(40.0);
+  NitrousLC2->setCalFactor(40.0);
+  NitrousLC3->setCalFactor(40.0);
+
+  ThrustLC = new ThrustCell();
+  ThrustLC->setCalFactor(-5.83);
+
+  RerouteTC = new Thermocouple(0x67);
+  RerouteTC2 = new Thermocouple(0x65);
+  RerouteTC3 = new Thermocouple(0x66);
+
+  pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
+  digitalWrite(CHAMBER_TC_PIN, HIGH);
+  ChamberTC = new ADS1118(CHAMBER_TC_PIN);
+  delay(100);
+
+  ChamberTC->begin();
+  ChamberTC->setSamplingRate(ChamberTC->RATE_860SPS);
+  ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
+  ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
+
+  EthaneHeater1 = new Heater(ETHANE_HEATER_1_PIN, &EthaneUpstreamPT);
+  EthaneHeater2 = new Heater(ETHANE_HEATER_2_PIN, &EthaneUpstreamPT);
+  NitrousHeater1 = new Heater(NITROUS_HEATER_1_PIN, &NitrousUpstreamPT);
+  NitrousHeater2 = new Heater(NITROUS_HEATER_2_PIN, &NitrousUpstreamPT);
+
+  EthaneHeater1->setTarget(ETHANE_TARGET_PRESSURE);
+  EthaneHeater2->setTarget(ETHANE_TARGET_PRESSURE);
+  NitrousHeater1->setTarget(NITROUS_TARGET_PRESSURE);
+  NitrousHeater2->setTarget(NITROUS_TARGET_PRESSURE);
+
+  EthaneUpstreamPT.setRedline(ETHANE_PRESSURE_REDLINE, OVERPRESSURE_COUNTS_THRESHOLD);
+  NitrousUpstreamPT.setRedline(ETHANE_PRESSURE_REDLINE, OVERPRESSURE_COUNTS_THRESHOLD);
+  
+  delay(1200);
+  if (print_data) {
+    start_time = millis();
+  }
+  if(full_output) {
+    SerialDual.println("Commands:");
+    SerialDual.println("  ETHANE_VENT_ON / ETHANE_VENT_OFF");
+    SerialDual.println("  NITROUS_VENT_ON / NITROUS_VENT_OFF");
+    SerialDual.println("  ETHANE_RUN_ON / ETHANE_RUN_OFF");
+    SerialDual.println("  NITROUS_RUN_ON / NITROUS_RUN_OFF");
+  }
+}
+
+void loop()
+{
+  elapsed = millis()-start_time;
+
+  EthaneMBV->update();
+  NitrousMBV->update();
+
+  // LOG
+  if (print_data)
+  {
+    status(full_output);
+  }
+
+  if (elapsed/1000.0 > runtime && runtime >= 0) {
+    print_data = false;
+  }
+
+  // COMMANDS
+  processCommand();
 
   // Scheduling Updates
   EthaneVent.checkScheduledActuation();
@@ -526,18 +410,24 @@ void loop()
   // Redlines
   if (EthaneUpstreamPT.checkRedline()) {
     SerialDual.println("CRITICAL ERROR: ETHANE PRESSURE REDLINE EXCEEDED");
-    if (EthaneMBV->isOpen()) {
-      EthaneMBV->next_90();
-    }
+
+    EthaneMBV->clearSchedule();
+    EthaneRunValve.clearSchedule();
+    EthaneVent.clearSchedule();
+
+    if (EthaneMBV->isOpen()) { EthaneMBV->next_90(); }
     EthaneVent.open();
     EthaneVent.setNextActuation(10000, false);
   }
 
   if (NitrousUpstreamPT.checkRedline()) {
     SerialDual.println("CRITICAL ERROR: NITROUS PRESSURE REDLINE EXCEEDED");
-    if (NitrousMBV->isOpen()) {
-      NitrousMBV->next_90();
-    }
+
+    NitrousMBV->clearSchedule();
+    NitrousRunValve.clearSchedule();
+    NitrousVent.clearSchedule();
+
+    if (NitrousMBV->isOpen()) { NitrousMBV->next_90(); }
     NitrousVent.open();
     NitrousVent.setNextActuation(10000, false);
   }
