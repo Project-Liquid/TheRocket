@@ -112,7 +112,7 @@ const float NITROUS_TARGET_PRESSURE = 90;
 Thermocouple* RerouteTC;
 Thermocouple* RerouteTC2;
 Thermocouple* RerouteTC3;
-/** TODO: This doesn't really work */
+/** TODO: This doesn't really work. */
 ADS1118* ChamberTC; 
 
 /** Serial Communication for Radios
