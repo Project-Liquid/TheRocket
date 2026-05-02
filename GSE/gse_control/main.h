@@ -1,7 +1,7 @@
 #pragma once
 
 #include "transducer.h"
-#include "solenoid.h"
+#include "relay.h"
 #include "mbv.h"
 #include "loadCell.h"
 #include "thermocouple.h"
@@ -23,6 +23,7 @@
 #define NITROUS_UPSTREAM_PIN    A10
 #define NITROUS_DOWNSTREAM_PIN  A9
 #define REROUTE_PT_PIN          A8
+#define CHAMBER_PT_PIN          37  //CHECK--doesn't seem right
 
 #define ETHANE_RUN_PIN   47
 #define ETHANE_VENT_PIN  46
@@ -48,6 +49,8 @@
 #define NITROUS_HEATER_1_PIN  43
 #define NITROUS_HEATER_2_PIN  45
 
+#define IGNITOR_PIN 39
+
 // Test Procedure Timings
 #define VENT_DELAY              1000
 #define VENT_TIME               3000
@@ -67,18 +70,19 @@
 #define P_MIN         0.0
 #define P_MAX_ETHANE  1000
 #define P_MAX_NITROUS 1500
+#define P_MAX_CHAMBER ?
 
 
 //========================GLOBAL VARIABLES========================//
 // Run Control
-bool print_data = true; // Will always be true
-unsigned long start_time = 0; 
+extern bool print_data; // Will always be true
+extern unsigned long start_time; 
 
 /**
  * Maximum miliseconds of runtime.
  * Note: Does not stop if negative
  */
-const int runtime = -1;
+extern const int runtime;
 
 /**
  * Gives diagnostic with full details if true, otherwise gives simplified output for logging.
@@ -94,20 +98,20 @@ enum TransmissionType {
   RAW
 };
 
-TransmissionType transmissionFormat = RAW;
+extern TransmissionType transmissionFormat;
 #define full_output (transmissionFormat == DIAGNOSTIC)
 
-unsigned long time_absolute = 0;
+extern unsigned long time_absolute;
 /**
  * Current Groundtime
  * - Defined as milis() - start_time */
-unsigned long time_elapsed = 0;
-bool static_fire_initializing = false;
-unsigned long static_fire_duration_ms = 0;
+extern unsigned long time_elapsed;
+extern bool static_fire_initializing;
+extern unsigned long static_fire_duration_ms;
 
-bool heaters_active = false;
-float ETHANE_TARGET_PRESSURE = 0;
-float NITROUS_TARGET_PRESSURE = 0;
+extern bool heaters_active;
+extern float ETHANE_TARGET_PRESSURE;
+extern float NITROUS_TARGET_PRESSURE;
 
 /**
  * The timing of each thing in data log
@@ -119,18 +123,18 @@ struct PollInterval {
   unsigned long last_trigger_ms;
 };
 
-PollInterval PTLog{50, 0};
-PollInterval LCLog{200, 0};
-PollInterval ValveLog{200, 0};
-PollInterval MBVLog{200, 0};
-PollInterval TCLog{200, 0};
-PollInterval RedlinePoll{100, 0};
-PollInterval ValveSchedulePoll{50, 0};
-PollInterval HeaterPoll{500, 0};
+extern PollInterval PTLog;
+extern PollInterval LCLog;
+extern PollInterval ValveLog;
+extern PollInterval MBVLog;
+extern PollInterval TCLog;
+extern PollInterval RedlinePoll;
+extern PollInterval ValveSchedulePoll;
+extern PollInterval HeaterPoll;
 
 
-float ETHANE_WEIGHT_REDLINE = 0;
-float NITROUS_WEIGHT_REDLINE = 0;
+extern float ETHANE_WEIGHT_REDLINE;
+extern float NITROUS_WEIGHT_REDLINE;
 
 //======================OBJECT DECLARATIONS=======================//
 
@@ -140,12 +144,13 @@ Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
 Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
 Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
 Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
+//Transducer ChamberPT(CHAMBER_PT_PIN, P_MIN, P_MAX_CHAMBER);
 
 // Solenoids
-Solenoid EthaneRunValve(ETHANE_RUN_PIN);
-Solenoid EthaneVent(ETHANE_VENT_PIN);
-Solenoid NitrousRunValve(NITROUS_RUN_PIN);
-Solenoid NitrousVent(NITROUS_VENT_PIN);
+Relay EthaneRunValve(ETHANE_RUN_PIN);
+Relay EthaneVent(ETHANE_VENT_PIN);
+Relay NitrousRunValve(NITROUS_RUN_PIN);
+Relay NitrousVent(NITROUS_VENT_PIN);
 
 // Motorized Ball Valves
 MBV* EthaneMBV;
@@ -172,6 +177,9 @@ Thermocouple* RerouteTC;
 Thermocouple* RerouteTC2;
 Thermocouple* RerouteTC3;
 ADS1118* ChamberTC; 
+
+// Ignitor
+Relay Ignitor(IGNITOR_PIN);
 
 /** Serial Communication for Radios
  * - Serial is hardline

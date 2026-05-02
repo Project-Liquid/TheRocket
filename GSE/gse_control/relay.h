@@ -4,7 +4,7 @@
 #include <StandardCplusplus.h>
 #include <vector>
 
-class Solenoid {
+class Relay {
 private:
   int pin;
   int is_open;
@@ -16,7 +16,7 @@ private:
 
 
 public:
-  Solenoid(int pin);
+  Relay(int pin);
   void open();
   void close();
   void toggle();

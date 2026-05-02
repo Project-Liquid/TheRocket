@@ -61,7 +61,9 @@ void LoadCell::setCalFactor(float calFactor) {
 }
 
 float LoadCell::read(int samples) {
-  float raw = getAverage(samples);
+  //float raw = getAverage(samples);
+  float raw = 0;
+  if (scale.is_ready()) raw = scale.get_units();
   float weight_grams = raw / cal;
   float weight_lbs = weight_grams / 453.592;
   return weight_lbs;
@@ -115,7 +117,7 @@ void LoadCell::join(LoadCell* LC2, LoadCell* LC3) {
 
 float LoadCell::readJoint(int samples) {
   if (joint) {
-    return this->read(samples) + LC2->read(samples) + LC3->read(samples);
+    return this->read(samples);// + LC2->read(samples) + LC3->read(samples);
   }
   return -1;
 }

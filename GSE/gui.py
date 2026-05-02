@@ -12,7 +12,7 @@ import serial.tools.list_ports
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QPushButton, QComboBox, QSpinBox,
-    QGroupBox, QSizePolicy, QFileDialog, QMessageBox, QFrame, QTextEdit
+    QGroupBox, QSizePolicy, QFileDialog, QMessageBox, QFrame, QTextEdit, QLineEdit
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt5.QtGui import QFont, QColor, QPalette
@@ -515,13 +515,37 @@ class GroundStation(QMainWindow):
         )
         self.serial_monitor.setMinimumHeight(150)
 
+        # Clear button
         clear_btn = QPushButton("Clear")
         clear_btn.setFixedHeight(28)
         clear_btn.setFont(QFont("Courier New", 8))
         clear_btn.clicked.connect(self.serial_monitor.clear)
 
+        # Input section for sending commands
+        input_layout = QHBoxLayout()
+        input_layout.setSpacing(4)
+        
+        self.serial_input = QLineEdit()
+        self.serial_input.setFont(QFont("Courier New", 8))
+        self.serial_input.setStyleSheet(
+            "background:#161b22; color:#c9d1d9; border:1px solid #30363d; border-radius:4px; padding:4px;"
+        )
+        self.serial_input.setPlaceholderText("Enter command...")
+        self.serial_input.returnPressed.connect(self._send_serial_command)
+        
+        send_btn = QPushButton("Send")
+        send_btn.setFixedHeight(28)
+        send_btn.setFixedWidth(60)
+        send_btn.setFont(QFont("Courier New", 8))
+        send_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
+        send_btn.clicked.connect(self._send_serial_command)
+        
+        input_layout.addWidget(self.serial_input)
+        input_layout.addWidget(send_btn)
+
         layout.addWidget(self.serial_monitor)
         layout.addWidget(clear_btn)
+        layout.addLayout(input_layout)
         return grp
 
     def _build_chart_group(self):
@@ -546,8 +570,15 @@ class GroundStation(QMainWindow):
         self.curve_lc_et  = self.lc_chart.plot(pen=pg.mkPen('#3fb950', width=2), name="Ethane")
         self.curve_lc_nit = self.lc_chart.plot(pen=pg.mkPen('#d29922', width=2), name="Nitrous")
 
+        clear_charts_btn = QPushButton("Clear Charts")
+        clear_charts_btn.setFixedHeight(32)
+        clear_charts_btn.setFont(QFont("Courier New", 8))
+        clear_charts_btn.setStyleSheet("background:#da3633; color:#fff; border-radius:4px;")
+        clear_charts_btn.clicked.connect(self._clear_chart_display)
+
         layout.addWidget(self.pt_chart)
         layout.addWidget(self.lc_chart)
+        layout.addWidget(clear_charts_btn)
         return grp
 
     # ── Connection ────────────────────────────────────────────────
@@ -765,6 +796,23 @@ class GroundStation(QMainWindow):
         for cmd in ["ETHANE_RUN_OFF", "NITROUS_RUN_OFF",
                     "ETHANE_VENT_ON", "NITROUS_VENT_ON"]:
             self.send_fn(cmd)
+
+    def _send_serial_command(self):
+        """Send command from serial monitor input field."""
+        cmd = self.serial_input.text().strip()
+        if cmd:
+            self.send_fn(cmd)
+            self.serial_monitor.append(f"→ {cmd}")
+            self.serial_input.clear()
+
+    def _clear_chart_display(self):
+        """Clear chart display without erasing historical data."""
+        self.curve_et_up.setData([], [])
+        self.curve_et_dn.setData([], [])
+        self.curve_nit_up.setData([], [])
+        self.curve_nit_dn.setData([], [])
+        self.curve_lc_et.setData([], [])
+        self.curve_lc_nit.setData([], [])
 
     def _start_cold_flow(self):
         side     = self.cf_side.currentText()

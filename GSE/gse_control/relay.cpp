@@ -1,36 +1,36 @@
-#include "solenoid.h"
+#include "relay.h"
 
-Solenoid::Solenoid(int pin) {
+Relay::Relay(int pin) {
   this->pin = pin;
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
   is_open = false;
 }
 
-void Solenoid::open() {
+void Relay::open() {
   is_open = true;
   digitalWrite(pin, HIGH);
 }
 
-void Solenoid::close() {
+void Relay::close() {
   is_open = false;
   digitalWrite(pin, LOW);
 }
 
-void Solenoid::toggle() {
+void Relay::toggle() {
   is_open = !is_open;
   digitalWrite(pin, (is_open ? HIGH : LOW));
 }
 
-bool Solenoid::state() {
+bool Relay::state() {
   return is_open;
 }
 
-void Solenoid::setNextActuation(int delay, bool open) {
+void Relay::setNextActuation(int delay, bool open) {
   scheduled_actuations.push_back({ millis() + (unsigned long)delay, open });
 }
 
-void Solenoid::checkScheduledActuation() {
+void Relay::checkScheduledActuation() {
   if (!scheduled_actuations.empty() && millis() >= scheduled_actuations[0].trigger_ms) {
     if (scheduled_actuations[0].open) {
       open();
@@ -41,6 +41,6 @@ void Solenoid::checkScheduledActuation() {
   }
 }
 
-void Solenoid::clearSchedule() {
+void Relay::clearSchedule() {
   scheduled_actuations.clear();
 }

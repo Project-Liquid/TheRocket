@@ -1,5 +1,26 @@
 #include "main.h"
 
+bool print_data = true;
+unsigned long start_time = 0; 
+const int runtime = -1;
+TransmissionType transmissionFormat = RAW;
+unsigned long time_absolute = 0;
+unsigned long time_elapsed = 0;
+bool static_fire_initializing = false;
+unsigned long static_fire_duration_ms = 0;
+bool heaters_active = false;
+float ETHANE_TARGET_PRESSURE = 0;
+float NITROUS_TARGET_PRESSURE = 0;
+PollInterval PTLog{50, 0};
+PollInterval LCLog{200, 0};
+PollInterval ValveLog{200, 0};
+PollInterval MBVLog{200, 0};
+PollInterval TCLog{200, 0};
+PollInterval RedlinePoll{100, 0};
+PollInterval ValveSchedulePoll{50, 0};
+PollInterval HeaterPoll{500, 0};
+float ETHANE_WEIGHT_REDLINE = -100;
+float NITROUS_WEIGHT_REDLINE = -100;
 
 //===========================FUNCTIONS============================//
 /** MARK: Helpers */
@@ -20,11 +41,11 @@ float readNitrousLC() {
  */
 void status(TransmissionType format = COMPRESSED) {
   time_elapsed = millis()-start_time;
-  long time = millis();
+  //long time = millis();
   bool print_current_poll = false;
 
   switch (format) {
-    case DIAGNOSTIC:
+    case DIAGNOSTIC: {
       SerialDual.println("====================");
       // Time
       SerialDual.print(String(time_elapsed/1000.0) + "s");
@@ -47,78 +68,82 @@ void status(TransmissionType format = COMPRESSED) {
       SerialDual.print("\tLC3: " + String(NitrousLC3->read(1))); 
       // SerialDual.print("\tTotal: " + String(readNitrousLC()));
       SerialDual.println();
-      // SerialDual.print("Thrust: " + String(ThrustLC->read()));
-      // SerialDual.println();
+      SerialDual.print("Thrust: " + String(ThrustLC->read()));
+      SerialDual.println();
       // Tank Heaters
-      // SerialDual.print("Ethane Tank 1: " + String(EthaneHeater1->isOn() ? "ON" : "OFF"));
-      // SerialDual.print("Nitrous Tank 1: " + String(NitrousHeater1->isOn() ? "ON" : "OFF"));
+      SerialDual.print("Ethane Tank 1: " + String(EthaneHeater1->isOn() ? "ON" : "OFF"));
+      SerialDual.print("Nitrous Tank 1: " + String(NitrousHeater1->isOn() ? "ON" : "OFF"));
       // Thermocouple
-      // SerialDual.println("Reroute TC: " + String(RerouteTC->readHot()) + "F");
-      // SerialDual.println("Reroute TC2: " + String(RerouteTC2->readHot()) + "F");
-      // SerialDual.println("Reroute TC3: " + String(RerouteTC3->readHot()) + "F");
+      SerialDual.println("Reroute TC: " + String(RerouteTC->readHot()) + "F");
+      SerialDual.println("Reroute TC2: " + String(RerouteTC2->readHot()) + "F");
+      SerialDual.println("Reroute TC3: " + String(RerouteTC3->readHot()) + "F");
       // MBVs
-      //SerialDual.println("Ethane MBV: " + String(EthaneMBV->getCurrentDegrees()));
+      SerialDual.println("Ethane MBV: " + String(EthaneMBV->getCurrentDegrees()));
       break;
+    }
 
-    case COMPRESSED:
+    case COMPRESSED: {
       String datastream = "";
       // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
       datastream += "DATA|" + String((time_elapsed/1000.0), 3);
-      if(time - PTLog.last_trigger_ms >= PTLog.interval_ms) {
+      if(time_absolute - PTLog.last_trigger_ms >= PTLog.interval_ms) {
         datastream += "|PT_EU:" + String(EthaneUpstreamPT.readPressure(), 3);
         datastream += "|PT_ED:" + String(EthaneDownstreamPT.readPressure(), 3);
         datastream += "|PT_NU:" + String(NitrousUpstreamPT.readPressure(), 3);
         datastream += "|PT_ND:" + String(NitrousDownstreamPT.readPressure(), 3);
-        PTLog.last_trigger_ms = time - (time % PTLog.interval_ms);
+        PTLog.last_trigger_ms = time_absolute - (time_absolute % PTLog.interval_ms);
         print_current_poll = true;
       }
       
-      if(time - LCLog.last_trigger_ms >= LCLog.interval_ms) {
-        datastream += "|LC_E1:" + String(EthaneLC1->read(1));
-        datastream += "|LC_E2:" + String(EthaneLC2->read(1));
-        datastream += "|LC_E3:" + String(EthaneLC3->read(1));
-        datastream += "|LC_N1:" + String(NitrousLC1->read(1));
-        datastream += "|LC_N2:" + String(NitrousLC2->read(1));
-        datastream += "|LC_N3:" + String(NitrousLC3->read(1));
-        datastream += "|LC_T:" + String(ThrustLC->read());
-        LCLog.last_trigger_ms = time - (time % LCLog.interval_ms);
-        print_current_poll = true;
-      }
+      // if(time_absolute - LCLog.last_trigger_ms >= LCLog.interval_ms) {
+      //   datastream += "|LC_E1:" + String(EthaneLC1->read(1));
+      //   datastream += "|LC_E2:" + String(EthaneLC2->read(1));
+      //   datastream += "|LC_E3:" + String(EthaneLC3->read(1));
+      //   datastream += "|LC_N1:" + String(NitrousLC1->read(1));
+      //   datastream += "|LC_N2:" + String(NitrousLC2->read(1));
+      //   datastream += "|LC_N3:" + String(NitrousLC3->read(1));
+      //   datastream += "|LC_T:" + String(ThrustLC->read());
+      //   LCLog.last_trigger_ms = time_absolute - (time_absolute % LCLog.interval_ms);
+      //   print_current_poll = true;
+      // }
 
-      if(time - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
+      if(time_absolute - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
         datastream += "|ERV:" + String(EthaneRunValve.state());
         datastream += "|EV:" + String(EthaneVent.state());
         datastream += "|NRV:" + String(NitrousRunValve.state());
         datastream += "|NV:" + String(NitrousVent.state());
         datastream += "|MBV_E:" + String(EthaneMBV->getCurrentDegrees());
         datastream += "|MBV_N:" + String(NitrousMBV->getCurrentDegrees());
-        ValveLog.last_trigger_ms = time - (time % ValveLog.interval_ms);
+        ValveLog.last_trigger_ms = time_absolute - (time_absolute % ValveLog.interval_ms);
         print_current_poll = true;
       }
 
-      if(time - TCLog.last_trigger_ms >= TCLog.interval_ms) {
+      if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         /** TODO: If you uncomment the line below, code will stop. Whoops. */
         datastream += "|TC_C:" + String(ChamberTC->getTemperature());
         datastream += "|TC_R:" + String(RerouteTC->readHot());
-        TCLog.last_trigger_ms = time - (time % TCLog.interval_ms);
+        TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
       }
 
       if (print_current_poll) SerialDual.println(datastream);
       break;
+    }
 
-    case RAW:
+    case RAW: {
       // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
-      if(time - PTLog.last_trigger_ms >= PTLog.interval_ms) {
-        SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); // TODO: print DATA line start PTs don't print but other data does
+      if(time_absolute - PTLog.last_trigger_ms >= PTLog.interval_ms) {
+        SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3);
         SerialDual.print("|PT_EU:");  SerialDual.print(EthaneUpstreamPT.readPressure(), 3);
         SerialDual.print("|PT_ED:");  SerialDual.print(EthaneDownstreamPT.readPressure(), 3);
         SerialDual.print("|PT_NU:");  SerialDual.print(NitrousUpstreamPT.readPressure(), 3);
         SerialDual.print("|PT_ND:");  SerialDual.print(NitrousDownstreamPT.readPressure(), 3);
-        PTLog.last_trigger_ms = time - (time % PTLog.interval_ms);
+        PTLog.last_trigger_ms = time_absolute - (time_absolute % PTLog.interval_ms);
+        print_current_poll = true;
       }
       
-      if(time - LCLog.last_trigger_ms >= LCLog.interval_ms) {
+      if(time_absolute - LCLog.last_trigger_ms >= LCLog.interval_ms) {
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
         SerialDual.print("|LC_E1:");  SerialDual.print(EthaneLC1->read(1));
         SerialDual.print("|LC_E2:");  SerialDual.print(EthaneLC2->read(1));
         SerialDual.print("|LC_E3:");  SerialDual.print(EthaneLC3->read(1));
@@ -126,26 +151,33 @@ void status(TransmissionType format = COMPRESSED) {
         SerialDual.print("|LC_N2:");  SerialDual.print(NitrousLC2->read(1));
         SerialDual.print("|LC_N3:");  SerialDual.print(NitrousLC3->read(1));
         SerialDual.print("|LC_T:");   SerialDual.print(ThrustLC->read());
-        LCLog.last_trigger_ms = time - (time % LCLog.interval_ms);
+        LCLog.last_trigger_ms = time_absolute - (time_absolute % LCLog.interval_ms);
+        print_current_poll = true;
       }
 
-      if(time - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
+      if(time_absolute - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
         SerialDual.print("|ERV:");    SerialDual.print(EthaneRunValve.state());
         SerialDual.print("|EV:");     SerialDual.print(EthaneVent.state());
         SerialDual.print("|NRV:");    SerialDual.print(NitrousRunValve.state());
         SerialDual.print("|NV:");     SerialDual.print(NitrousVent.state());
         SerialDual.print("|MBV_E:");  SerialDual.print(EthaneMBV->getCurrentDegrees());
         SerialDual.print("|MBV_N:");  SerialDual.print(NitrousMBV->getCurrentDegrees());
-        ValveLog.last_trigger_ms = time - (time % ValveLog.interval_ms);
+        ValveLog.last_trigger_ms = time_absolute - (time_absolute % ValveLog.interval_ms);
+        print_current_poll = true;
       }
 
-      if(time - TCLog.last_trigger_ms >= TCLog.interval_ms) {
+      if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
         SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->getTemperature());
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
-        TCLog.last_trigger_ms = time - (time % TCLog.interval_ms);
+        TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
+        print_current_poll = true;
       }
 
+      if (print_current_poll) { SerialDual.println(); }
       break;
+    }
   }
 }
 
@@ -284,7 +316,7 @@ void processCommand() {
     }
 
     else {
-      if(full_output) { SerialDual.println("Unknown command."); }
+      if(full_output) { SerialDual.println("Unknown command.");}
     }
   }
 }
@@ -345,10 +377,9 @@ void staticFire() {
   //NitrousRunValve.open();
   EthaneRunValve.open();
 
-  //Ignitor.setNextActutation(5000);
+  Ignitor.setNextActuation(5000, true);
   
-  // TODO: Replace with logic when ChamberTC works
-  if (ChamberTC->getTemperature() > 100) {
+  //if (ChamberTC->getTemperature() > 100) {
     //NitrousMBV->next_90();
     EthaneMBV->setNextActuation(ETHANE_DELAY);
     //NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);
@@ -363,7 +394,7 @@ void staticFire() {
     //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + 2*VENT_TIME + 1100, false);
 
     static_fire_initializing = false;
-  }
+  //}
 }
 
 //===========================EXECUTION============================//
@@ -374,7 +405,7 @@ void staticFire() {
 void setup()
 {
   // TURN SERIAL OFF; TURN SERIAL2 ON
-  SerialDual.setActive(false, true);
+  SerialDual.setActive(true, false);
   SerialDual.begin(BAUD_RATE);
   //SerialDual.flush();
   SerialDual.println("START");
