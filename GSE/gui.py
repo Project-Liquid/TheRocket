@@ -1,3 +1,4 @@
+import os
 import sys
 import csv
 import threading
@@ -47,6 +48,7 @@ class SerialWorker(QObject):
             self.connection_lost.emit()
             return
 
+        num_raw = 0
         while self._running:
             try:
                 raw = self.ser.readline().decode('ascii', errors='replace').rstrip('\r\n')
@@ -56,6 +58,11 @@ class SerialWorker(QObject):
                     if parsed:
                         self.data_received.emit(parsed)
                     self.raw_received.emit(raw)  # Emit raw line for monitor
+                elif raw != "":  # Emit non-empty lines that don't start with DATA| as well
+                    self.raw_received.emit(raw)
+                    
+
+
             except (serial.SerialException, OSError):
                 self.connection_lost.emit()
                 break
@@ -186,7 +193,7 @@ class GroundStation(QMainWindow):
         self._apply_dark_theme()
 
         self.worker = None
-        self.thread = None
+        self.serial_thread = None
         self.send_fn = lambda cmd: None  # no-op until connected
 
         # Data history for charts
@@ -493,12 +500,19 @@ class GroundStation(QMainWindow):
         export_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
         export_btn.clicked.connect(self._export_csv)
 
+        load_backup_btn = QPushButton("📂  Load Backup")
+        load_backup_btn.setFixedHeight(36)
+        load_backup_btn.setFont(QFont("Courier New", 9, QFont.Bold))
+        load_backup_btn.setStyleSheet("background:#8b949e; color:#fff; border-radius:4px;")
+        load_backup_btn.clicked.connect(self._load_backup)
+
         self.log_count_lbl = QLabel("0 rows logged")
         self.log_count_lbl.setFont(QFont("Courier New", 8))
         self.log_count_lbl.setStyleSheet("color:#8b949e;")
 
         layout.addWidget(self.log_btn)
         layout.addWidget(export_btn)
+        layout.addWidget(load_backup_btn)
         layout.addWidget(self.log_count_lbl)
         return grp
 
@@ -588,7 +602,7 @@ class GroundStation(QMainWindow):
         self.port_combo.addItems(ports if ports else ["No ports found"])
 
     def _toggle_connection(self):
-        if self.thread and self.thread.isRunning():
+        if self.serial_thread and self.serial_thread.isRunning():
             self._disconnect()
         else:
             self._connect()
@@ -600,27 +614,50 @@ class GroundStation(QMainWindow):
             return
 
         self.worker = SerialWorker(port)
-        self.thread = QThread()
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.start)
+        self.serial_thread = QThread()
+        self.worker.moveToThread(self.serial_thread)
+        self.serial_thread.started.connect(self.worker.start)
         self.worker.data_received.connect(self._on_data)
         self.worker.raw_received.connect(self._on_raw_data)
         self.worker.connection_lost.connect(self._disconnect)
         self.send_fn = self.worker.send
-        self.thread.start()
+        self.serial_thread.start()
 
         self.connect_btn.setText("Disconnect")
         self.connect_btn.setStyleSheet("background:#da3633; color:#fff; border-radius:4px;")
         self.status_lbl.setText("● Connected")
         self.status_lbl.setStyleSheet("color:#3fb950;")
 
+
+    def _backup_connect(self):
+        port = self.port_combo.currentText()
+        if not port or port == "No ports found":
+            QMessageBox.warning(self, "No Port", "Select a valid serial port.")
+            return
+
+        self.worker = SerialWorker(port)
+        self.serial_thread = QThread()
+        self.worker.moveToThread(self.serial_thread)
+        self.serial_thread.started.connect(self.worker.start)
+        self.worker.data_received.connect(self._on_data)
+        self.worker.raw_received.connect(self._on_raw_data)
+        self.worker.connection_lost.connect(self._disconnect)
+        self.send_fn = self.worker.send
+        self.serial_thread.start()
+
+        self.connect_btn.setText("Close Historical View")
+        self.connect_btn.setStyleSheet("background:#da3633; color:#fff; border-radius:4px;")
+        self.status_lbl.setText("● Backup Loaded")
+        self.status_lbl.setStyleSheet("color:#3fb950;")
+
+
     # TODO: If CSV is recording, make sure to finalize and save the file on disconnect
     def _disconnect(self):
         if self.worker:
             self.worker.stop()
-        if self.thread:
-            self.thread.quit()
-            self.thread.wait()
+        if self.serial_thread:
+            self.serial_thread.quit()
+            self.serial_thread.wait()
         self.send_fn = lambda cmd: None
         self.connect_btn.setText("Connect")
         self.connect_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
@@ -629,7 +666,7 @@ class GroundStation(QMainWindow):
         self.serial_monitor.clear()
 
     # ── Data Handler ──────────────────────────────────────────────
-    def _on_data(self, state: dict):
+    def _on_data(self, state: dict, packet_size=100):
         t = state.get('millis', 0) / 1000.0
 
         # PT readouts
@@ -772,20 +809,29 @@ class GroundStation(QMainWindow):
             # Backup Data Storage
             num_rows = len(self.log_rows)
             self.log_count_lbl.setText(f"{num_rows} rows logged")
-            PACKET_SIZE = 20 # how many rows to save per pickle file
+            # PACKET_SIZE = 100 # how many rows to save per pickle file
 
-            if self.logging_active and num_rows % PACKET_SIZE == 0 and self.log_folder_path is not None:
+            if self.logging_active and num_rows % packet_size == 0 and self.log_folder_path is not None:
                 path = self.log_folder_path / f"data-{num_rows}.pkl"
 
                 # Create folder if it doesn't exist
                 path.parent.mkdir(parents=True, exist_ok=True)
                 with open(path, "wb") as f:
-                    pickle.dump(self.log_rows[-PACKET_SIZE:], f)
+                    pickle.dump(self.log_rows[-packet_size:], f)
 
 
     def _on_raw_data(self, raw: str):
         """Append raw serial line to monitor."""
         self.serial_monitor.append(raw)
+
+        if self.logging_active and not raw.startswith("DATA|") and self.log_folder_path is not None and self.log_rows is not None:  # skip echo lines
+            path = self.log_folder_path / f"raw-{len(self.log_rows)}.pkl"
+
+            # Create folder if it doesn't exist
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "wb") as f:
+                pickle.dump(raw, f)
+            
         # Auto-scroll to bottom
         self.serial_monitor.verticalScrollBar().setValue(
             self.serial_monitor.verticalScrollBar().maximum()
@@ -871,6 +917,124 @@ class GroundStation(QMainWindow):
                 writer.writeheader()
                 writer.writerows(self.log_rows)
             QMessageBox.information(self, "Exported", f"Saved {len(self.log_rows)} rows to:\n{fname}")
+
+    def _load_backup(self):
+        """Utility to convert a raw pickle file to CSV (for backup data storage)."""
+        if self.logging_active:
+            QMessageBox.warning(self, "Logging Active", "Stop logging before loading backup data.")
+            return
+        
+        if self.serial_thread and self.serial_thread.isRunning():
+            QMessageBox.warning(self, "Connected", "Disconnect from serial port before loading backup data.")
+            return
+        
+        folder_dir = QFileDialog.getExistingDirectory(self, "Open Backup Folder", "")
+        if not folder_dir:
+            return
+        
+        
+        file_pre_num_string = "data-"
+        file_post_num_string = ".pkl"
+        file_pre_num_count = len(file_pre_num_string)
+        file_post_num_count = len(file_post_num_string)
+
+        file_names = os.listdir(folder_dir)
+        numbers = [int(file[file_pre_num_count:-file_post_num_count])\
+                   for file in file_names if \
+                    file.endswith(file_post_num_string) and\
+                    file.startswith(file_pre_num_string)]
+    
+        num_files = len(numbers)
+        if num_files == 0:
+            # TODO: Check this works and doesn't mess stuff up
+            QMessageBox.warning(self, "No Data Files", "No valid backup files found in the selected folder.")
+            return
+        
+        numbers = sorted(numbers)
+
+        sorted_packets = [f"{file_pre_num_string}{num}{file_post_num_string}"\
+                        for num in numbers]
+        
+        
+        data_rows = []
+
+        for file in sorted_packets:
+            if (int(file[file_pre_num_count:-file_post_num_count]) % 100 == 0):
+                print(f"Reading file: {file}/{num_files} ({(int(file[file_pre_num_count:-file_post_num_count])/num_files)*100:.2f}%)")
+            with open(f"{folder_dir}/{file}", 'rb') as f:
+                try:
+                    raw_read = pickle.load(f)
+                    if isinstance(raw_read, list):
+                        data_rows.extend(raw_read)
+                    else:
+                        data_rows.append(raw_read)
+                except Exception as e:
+                    print(f"Error loading {file}: {e}")
+                    continue
+
+        start_time = folder_dir.split("/")[-1] # get filename from path
+        self.log_rows.clear()
+        self.log_start_time = datetime.strptime(start_time, '%Y-%m-%d_%H-%M-%S')
+        self.log_rows = data_rows
+        self.log_folder_path = Path(folder_dir)
+        self.log_count_lbl.setText(f"{len(self.log_rows)} rows loaded")
+
+        # self._backup_connect()
+        if should_load_to_charts := QMessageBox.question(
+            self, "Load to Charts?", "Data was loaded internally, and can be exported with the export CSV function.\
+                Load backup data into live charts? (May be slow for large datasets)",
+            QMessageBox.Yes | QMessageBox.No
+        ) == QMessageBox.Yes:
+            fake_time = 0
+            for row in self.log_rows:
+                new_row = {}
+                for key, value in row.items():
+                    if key == 'time_s':
+                        new_row['time_s'] = fake_time
+                        fake_time += 1
+                    if key == 'ET_UP':
+                        new_row['PT_EU'] = row['ET_UP']
+                    if key == 'ET_DN':
+                        new_row['PT_ED'] = row['ET_DN']
+                    if key == 'NIT_UP':
+                        new_row['PT_NU'] = row['NIT_UP']
+                    if key == 'NIT_DN':
+                        new_row['PT_ND'] = row['NIT_DN']
+                    if key == 'LC1':
+                        new_row['LC_E1'] = row['LC1']
+                    if key == 'LC2':
+                        new_row['LC_E2'] = row['LC2']
+                    if key == 'LC3':
+                        new_row['LC_E3'] = row['LC3']
+                    if key == 'ET_TOTAL':
+                        new_row['ET_TOTAL'] = row['ET_TOTAL']
+                    if key == 'NLC1':
+                        new_row['LC_N1'] = row['NLC1']
+                    if key == 'NLC2':
+                        new_row['LC_N2'] = row['NLC2']
+                    if key == 'NLC3':
+                        new_row['LC_N3'] = row['NLC3']
+                    if key == 'NIT_TOTAL':
+                        new_row['NIT_TOTAL'] = row['NIT_TOTAL']
+                    if key == 'LC_T':
+                        new_row['LC_T'] = row['LC_T']
+                    if key == 'ERV':
+                        new_row['ERV'] = row['ERV']
+                    if key == 'EV':
+                        new_row['EV'] = row['EV']
+                    if key == 'NRV':
+                        new_row['NRV'] = row['NRV']
+                    if key == 'NV':
+                        new_row['NV'] = row['NV']
+                    try:
+                        new_row[key] = float(value)
+                    except ValueError:
+                        new_row[key] = value
+            
+                self._on_data(new_row)
+
+        QMessageBox.information(self, "Backup Loaded", f"Loaded {len(self.log_rows)} rows from:\n{folder_dir}")
+        
 
     # ── Theme ─────────────────────────────────────────────────────
     def _apply_dark_theme(self):
