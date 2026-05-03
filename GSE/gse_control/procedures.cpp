@@ -8,11 +8,11 @@ bool NitrousOverpressureCondition() { return NitrousUpstreamPT.readPressure() > 
 bool EthaneMBVCloseFailureCondition() { return; }  //Unessecary, controlled by cold flow/ static fire
 bool NitrousMBVCloseFailureCondition() { return; } //Unessecary, controlled by cold flow/ static fire
 bool CombustionPropogationCondition() { 
-  return static_fire_steady && ((|(ReroutePT.value()-ChamberPT.value())|/ReroutePT.value() >0.1)||
-   ((EthaneDownstreamPT.value()-ChamberPT.value())|/EthaneDownstreamPT.value() >0.1)||
-    ((0.95*ReroutePT.value() < ChamberPT.value())) ||
-    ((0.95*EthaneDownstreamPT.value() < ChamberPT.value())));}
-bool InlineThermalDecompCondition() { return RerouteTC->readHot() >  REROUTE_TC_REDLINE}
+  return static_fire_steady && ((fabs((ReroutePT.readPressure()-ChamberPT.readPressure()))/ReroutePT.readPressure() >0.1)||
+   ((fabs(EthaneDownstreamPT.readPressure()-ChamberPT.readPressure()))/EthaneDownstreamPT.readPressure() >0.1)||
+    ((0.95*ReroutePT.readPressure() < ChamberPT.readPressure())) ||
+    ((0.95*EthaneDownstreamPT.readPressure() < ChamberPT.readPressure())));}
+bool InlineThermalDecompCondition() { return RerouteTC->readHot() > REROUTE_TC_REDLINE;}
 bool LostLoadCellCondition() { return; } //Unnecessary, operator control
 bool EthaneUnderweightCondition() { return EthaneLC1->readJoint(1) < ETHANE_WEIGHT_REDLINE; }
 bool NitrousUnderweightCondition() { return;} //Unnecessary, operator control
@@ -55,9 +55,9 @@ void NitrousMBVCloseFailureResponse() {
 void CombustionPropogationResponse() {
   neutralizeAll();
 
-  NitrousMBV.next_90();
+  NitrousMBV->next_90();
   NitrousRunValve.close();
-  EthaneMBV.next_90();
+  EthaneMBV->next_90();
   EthaneRunValve.close();
 
   NitrousVent.open();
@@ -68,15 +68,15 @@ void CombustionPropogationResponse() {
 void InlineThermalDecompResponse() {
   neutralizeAll();
 
-  NitrousMBV.next_90();
+  NitrousMBV->next_90();
   NitrousRunValve.close();
-  EthaneMBV.setNextActuation(1000);
+  EthaneMBV->setNextActuation(1000);
   EthaneRunValve.setNextActuation(1000, false);
 }
 void LostLoadCellResponse() {}
 void EthaneUnderweightResponse() {
   EthaneRunValve.neutralize();
-  EthaneRunValve.close()
+  EthaneRunValve.close();
   }
 void NitrousUnderweightResponse() {}
 void EthaneOverweightResponse() {}

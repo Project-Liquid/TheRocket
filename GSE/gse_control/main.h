@@ -129,6 +129,8 @@ extern unsigned long time_absolute;
 extern unsigned long time_elapsed;
 extern bool static_fire_initializing;
 extern unsigned long static_fire_duration_ms;
+extern unsigned long static_fire_start_ms;
+extern bool static_fire_steady;
 
 extern bool heaters_active;
 extern float ETHANE_TARGET_PRESSURE;
@@ -165,7 +167,7 @@ extern Transducer EthaneDownstreamPT;
 extern Transducer NitrousUpstreamPT;
 extern Transducer NitrousDownstreamPT;
 extern Transducer ReroutePT;
-//Transducer ChamberPT;
+extern Transducer ChamberPT;
 
 // Solenoids
 extern Relay EthaneRunValve;

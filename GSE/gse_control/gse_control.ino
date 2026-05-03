@@ -429,9 +429,9 @@ void setup()
   ThrustLC->setCalFactor(-5.83);
   SerialDual.println("START3");
 
-  RerouteTC = new Thermocouple(0x67);
+  RerouteTC = new Thermocouple(0x66);
   RerouteTC2 = new Thermocouple(0x65);
-  RerouteTC3 = new Thermocouple(0x66);
+  RerouteTC3 = new Thermocouple(0x67);
 
   pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
   digitalWrite(CHAMBER_TC_PIN, HIGH);
