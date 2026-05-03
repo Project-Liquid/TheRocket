@@ -79,7 +79,7 @@ void coldFlowEthane(long duration_ms) {
   EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME);
   EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
 
-  EthaneRunValve.setNextActuation(1000 + duration_ms, false);
+  EthaneRunValve.setNextActuation(RUN_EQUALIZE_TIME + duration_ms, false);
 }
 
 void coldFlowNitrous(long duration_ms) {
@@ -88,7 +88,7 @@ void coldFlowNitrous(long duration_ms) {
   NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME);
   NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
 
-  NitrousRunValve.setNextActuation(2*RUN_EQUALIZE_TIME + duration_ms, false);
+  NitrousRunValve.setNextActuation(RUN_EQUALIZE_TIME + duration_ms, false);
 }
 
 void staticFire() {
