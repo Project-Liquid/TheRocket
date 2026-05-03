@@ -254,6 +254,7 @@ class GroundStation(QMainWindow):
         left = QVBoxLayout()
         left.addWidget(self._build_pt_group())
         left.addWidget(self._build_lc_group())
+        left.addWidget(self._build_tc_group())
         left.addWidget(self._build_serial_monitor_group())
         left.addWidget(self._build_export_group())
         left.addStretch()
@@ -343,6 +344,21 @@ class GroundStation(QMainWindow):
         for i, w in enumerate([self.lc_n1, self.lc_n2, self.lc_n3, self.lc_nt]):
             grid.addWidget(w, 1, i)
         grid.addWidget(self.lc_t, 2, 1, 1, 2)
+        return grp
+    
+    def _build_tc_group(self):
+        grp = QGroupBox("THERMOCOUPLES")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
+        # once redlines are determined by fluids.
+        self.tc_c = SensorLabel("Chamber TC", "°C")
+        self.tc_r = SensorLabel("Reroute TC", "°C")
+
+        grid.addWidget(self.tc_c,  0, 0)
+        grid.addWidget(self.tc_r,  0, 1)
         return grp
     
 
@@ -738,6 +754,14 @@ class GroundStation(QMainWindow):
             self.mbv_e_display.update_value(mbv_e)
         if 'MBV_N' in state:
             self.mbv_n_display.update_value(mbv_n)
+
+        # TC
+        tc_c = state.get('TC_C', float('nan'))
+        tc_r = state.get('TC_R', float('nan'))
+        if 'TC_C' in state:
+            self.tc_c_display.update_value(tc_c)
+        if 'TC_R' in state:
+            self.tc_r_display.update_value(tc_r)
 
         # Valve states from firmware flags (re-enable if firmware emits these)
         if 'ERV' in state:
