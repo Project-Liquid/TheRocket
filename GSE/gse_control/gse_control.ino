@@ -169,10 +169,10 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - HeaterPoll.last_trigger_ms >= HeaterPoll.interval_ms){
         if (!print_current_poll) {SerialDual.print("DATA|"); serialDual.print ((time_elapsed/1000.0),3);}
-        SerialDual.print("|NH_1:"); SerialDual.print(NitrousHeater1->isOn);
-        SerialDual.print("|NH_2:"); SerialDual.print(NitrousHeater2->isOn);
-        SerialDual.print("|EH_1:"); SerialDual.print(EthaneHeater1->isOn);
-        SerialDual.print("|EH_2:"); SerialDual.print(EthaneHeater2->isOn);
+        SerialDual.print("|NH_1:"); SerialDual.print(NitrousHeater1->isOn());
+        SerialDual.print("|NH_2:"); SerialDual.print(NitrousHeater2->isOn());
+        SerialDual.print("|EH_1:"); SerialDual.print(EthaneHeater1->isOn());
+        SerialDual.print("|EH_2:"); SerialDual.print(EthaneHeater2->isOn());
         HeaterPoll.last_trigger_ms = time_absolute - (time_absolute % HeaterPoll.interval_ms);
         print_current_poll = true;
       }
