@@ -24,6 +24,7 @@ PollInterval HeaterPoll{500, 0};
 float ETHANE_WEIGHT_REDLINE = -27;
 float NITROUS_WEIGHT_REDLINE = 19.5;
 int current_highest_redline = 0;
+int last_highest_redline = 0;
 String cmd = "";
 //======================OBJECT DEFNINTIONS=======================//
 
@@ -72,6 +73,7 @@ Redline EthaneUnderweight(EthaneUnderweightCondition, EthaneUnderweightResponse,
 Redline NitrousUnderweight(NitrousUnderweightCondition, NitrousUnderweightResponse, NITROUS_UNDERWEIGHT_PRIORITY, UNDERWEIGHT_COUNTS_THRESHOLD);
 Redline EthaneOverweight(EthaneOverweightCondition, EthaneOverweightResponse, ETHANE_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
 Redline NitrousOverweight(NitrousOverweightCondition, NitrousOverweightResponse, NITROUS_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
+/** TODO: MAKE ARRAY INDEXED BY PRIORITY */
 Redline Redlines[11] = {EthaneOverpressure, NitrousOverpressure, EthaneMBVCloseFailure, NitrousMBVCloseFailure, 
   CombustionPropogation, InlineThermalDecomp, LostLoadCell, EthaneUnderweight, NitrousUnderweight, EthaneOverweight, NitrousOverweight};
 
@@ -511,10 +513,22 @@ void loop()
   // Redlines
   if(time_absolute - RedlinePoll.last_trigger_ms >= RedlinePoll.interval_ms) {
 
-    if (current_highest_redline > 0) current_highest_redline--;
+    if (current_highest_redline > 0) {
+      last_highest_redline = current_highest_redline;
+      current_highest_redline--;
+    }
+
     for (Redline r : Redlines) {
       int current_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
     }
+
+    if (current_highest_redline > -1) {
+      SerialDual.print("REDLINE|"); SerialDual.print((time_elapsed/1000.0), 3);
+      SerialDual.print("|RD_H:"); SerialDual.print(current_highest_redline);
+      SerialDual.print("|RD_L:"); SerialDual.print(last_highest_redline);
+      SerialDual.println();
+    }
+  
 
     RedlinePoll.last_trigger_ms = time_absolute - (time_absolute % RedlinePoll.interval_ms);
   }

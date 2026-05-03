@@ -108,7 +108,7 @@ class SerialWorker(QObject):
 #  Valve Button Widget
 # ─────────────────────────────────────────
 class ValveButton(QPushButton):
-    def __init__(self, label, cmd_on, cmd_off, parent=None, color="#ff4466"):
+    def __init__(self, label, cmd_on, cmd_off, parent=None, color="#ff4466", useOnOff=False):
         super().__init__(label, parent)
         self.cmd_on = cmd_on
         self.cmd_off = cmd_off
@@ -116,6 +116,7 @@ class ValveButton(QPushButton):
         self.setFixedHeight(48)
         self.setFont(QFont("Courier New", 10, QFont.Bold))
         self.color = color
+        self.useOnOff = useOnOff
         self._refresh()
 
     def toggle(self, send_fn):
@@ -133,13 +134,20 @@ class ValveButton(QPushButton):
                 "background:#00ff88; color:#000; border:2px solid #00cc66;"
                 "border-radius:4px; font-weight:bold;"
             )
-            self.setText(self.text().split('●')[0].strip() + "  ● OPEN")
+            if not self.useOnOff:
+                self.setText(self.text().split('●')[0].strip() + "  ● OPEN")
+            else:
+                self.setText(self.text().split('●')[0].strip() + "  ● ON")
+
         else:
             self.setStyleSheet(
                 f"background:#1a1a2e; color:{self.color}; border:2px solid {self.color};"
                 "border-radius:4px; font-weight:bold;"
             )
-            self.setText(self.text().split('●')[0].strip().replace('  ', '') + "  ● CLOSED")
+            if not self.useOnOff:
+                self.setText(self.text().split('●')[0].strip().replace('  ', '') + "  ● CLOSED")
+            else:
+                self.setText(self.text().split('●')[0].strip().replace('  ', '') + "  ● OFF")
 
 
 # ─────────────────────────────────────────
@@ -267,7 +275,9 @@ class GroundStation(QMainWindow):
         # Give thrust and TC groups more horizontal space (stretch > export)
         t_bar.addWidget(thrust_grp, 3)
         t_bar.addWidget(tc_grp, 3)
+        # t_bar.addWidget(self._build_heater_group(), 3)
         t_bar.addWidget(export_grp, 5)
+        t_bar.addWidget(self._build_cold_flow_group(), 3)
         t_bar.addStretch()
         root.addLayout(t_bar)
 
@@ -280,6 +290,7 @@ class GroundStation(QMainWindow):
         left.addWidget(self._build_ethane_pt_group())
         left.addWidget(self._build_ethane_lc_group())
         left.addWidget(self._build_ethane_mbv_group())
+        left.addWidget(self._build_ethane_heater_group())
         # left.addWidget(self._build_tc_group())
         left.addWidget(self._build_serial_monitor_group())
         left.addStretch()
@@ -290,6 +301,7 @@ class GroundStation(QMainWindow):
         right.addWidget(self._build_nitrous_pt_group())
         right.addWidget(self._build_nitrous_lc_group())
         right.addWidget(self._build_nitrous_mbv_group())
+        right.addWidget(self._build_nitrous_heater_group())
         # right.addWidget(self._build_cold_flow_group())
         # right.addWidget(self._build_static_fire_group())
         # right.addWidget(self._build_export_group())
@@ -455,6 +467,94 @@ class GroundStation(QMainWindow):
        
         return grp
 
+    def _build_heater_group(self):
+        grp = QGroupBox("HEATERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        self.nh_1_lbl = SensorLabel("Heater NH1",  "bool")
+        self.nh_2_lbl = SensorLabel("Heater NH2",  "bool")
+        self.eh_1_lbl = SensorLabel("Heater EH1",  "bool")
+        self.eh_2_lbl = SensorLabel("Heater EH2", "bool")
+
+        for i, w in enumerate([self.nh_1_lbl, self.nh_2_lbl, self.eh_1_lbl, self.eh_2_lbl]):
+            grid.addWidget(w, 0, i)
+       
+        return grp
+
+    def _build_ethane_heater_group(self):
+        grp = QGroupBox("HEATERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        self.eh_1_lbl = SensorLabel("Heater EH1",  "bool")
+        self.eh_2_lbl = SensorLabel("Heater EH2", "bool")
+
+        for i, w in enumerate([self.eh_1_lbl, self.eh_2_lbl]):
+            grid.addWidget(w, 0, i)
+       
+        return grp
+
+    # def _build_nitrous_heater_group(self):
+    #     grp = QGroupBox("HEATERS")
+    #     grp.setFont(QFont("Courier New", 9, QFont.Bold))
+    #     grid = QGridLayout(grp)
+    #     grid.setSpacing(6)
+
+    #     self.nh_1_lbl = SensorLabel("Heater NH1",  "bool")
+    #     self.nh_2_lbl = SensorLabel("Heater NH2",  "bool")
+
+    #     for i, w in enumerate([self.nh_1_lbl, self.nh_2_lbl]):
+    #         grid.addWidget(w, 0, i)
+       
+    #     return grp
+
+
+    def _build_nitrous_heater_group(self):
+        grp = QGroupBox("NITROUS HEATERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        nitrous_layout = QVBoxLayout(grp)
+        nitrous_layout.setSpacing(6)
+
+        nitrous_lbl_layout = QHBoxLayout()
+
+        self.nh_1_lbl = SensorLabel("Heater NH1",  "bool")
+        self.nh_2_lbl = SensorLabel("Heater NH2",  "bool")
+
+        nitrous_lbl_layout.addWidget(self.nh_1_lbl)
+        nitrous_lbl_layout.addWidget(self.nh_2_lbl)
+
+        # nitrous_layout = QVBoxLayout()
+        nitrous_layout.addLayout(nitrous_lbl_layout)
+        
+        # nitrous_btn_layout = QHBoxLayout()
+        # btn_n_10 = QPushButton("+10°")
+        # btn_n_10.setFont(QFont("Courier New", 9))
+        # btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_MBV_10"))
+        # btn_n_90 = QPushButton("+90°")
+        # btn_n_90.setFont(QFont("Courier New", 9))
+        # btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_MBV_90N"))
+        # nitrous_btn_layout.addWidget(btn_n_10)
+        # nitrous_btn_layout.addWidget(btn_n_90)
+        # nitrous_layout.addLayout(nitrous_btn_layout)
+
+        # Heater Button
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(6)
+
+        self.btn_nh1 = ValveButton("Nitrous Heater 1",  "NITROUS_H1_ON",  "NITROUS_H1_OFF", color= "#58a6ff", useOnOff=True)
+        self.btn_nh2  = ValveButton("Nitrous Heater 2",  "NITROUS_H2_ON",  "NITROUS_H2_OFF", color= "#58a6ff", useOnOff=True)
+
+        for btn in [self.btn_nh1, self.btn_nh2]:
+            btn.clicked.connect(lambda checked, b=btn: b.toggle(self.send_fn))
+            btn_layout.addWidget(btn)
+
+        nitrous_layout.addLayout(btn_layout)
+        
+        return grp
+
     def _build_nitrous_lc_group(self):
         grp = QGroupBox("NITROUS LOAD CELLS")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
@@ -481,21 +581,6 @@ class GroundStation(QMainWindow):
         # TODO: The redlines in GUI are not the same as redline in GUI. Must change
         # once redlines are determined by fluids.
         self.tc_c_display = SensorLabel("Chamber TC", "°C")
-        self.tc_r_display = SensorLabel("Reroute TC", "°C")
-
-        grid.addWidget(self.tc_c_display,  0, 0)
-        grid.addWidget(self.tc_r_display,  0, 1)
-        return grp
-
-    def _build_heater_group(self):
-        grp = QGroupBox("HEATERS")
-        grp.setFont(QFont("Courier New", 9, QFont.Bold))
-        grid = QGridLayout(grp)
-        grid.setSpacing(6)
-
-        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
-        # once redlines are determined by fluids.
-        self.heater = SensorLabel("Chamber TC", "°C")
         self.tc_r_display = SensorLabel("Reroute TC", "°C")
 
         grid.addWidget(self.tc_c_display,  0, 0)
@@ -1070,6 +1155,20 @@ class GroundStation(QMainWindow):
             self.btn_nv.set_state(bool(state.get('NV', 0)))
 
         # Heaters
+        nh_1 = state.get('NH_1', float('nan'))
+        nh_2 = state.get('NH_2', float('nan'))
+        eh_1 = state.get('EH_1', float('nan'))
+        eh_2 = state.get('EH_2', float('nan'))
+
+
+        if 'NH_1' in state:
+            self.nh_1_lbl.update_value('True' if nh_1 else 'False')
+        if 'NH_2' in state:
+            self.nh_2_lbl.update_value('True' if nh_2 else 'False')
+        if 'EH_1' in state:
+            self.eh_1_lbl.update_value('True' if eh_1 else 'False')
+        if 'EH_2' in state:
+            self.eh_2_lbl.update_value('True' if eh_2 else 'False')
 
         # Charts
         self.t_hist.append(t)

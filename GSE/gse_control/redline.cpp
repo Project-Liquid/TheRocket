@@ -25,6 +25,7 @@ int Redline::checkTrigger(int current_priority) {
 
   if (counts > counts_threshold && priority > current_priority) {
     counts = 0;
+    response(); // Added in the responze
     return priority;
   }
   return -1;
