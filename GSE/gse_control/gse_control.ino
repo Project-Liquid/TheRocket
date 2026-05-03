@@ -19,8 +19,6 @@ PollInterval TCLog{200, 0};
 PollInterval RedlinePoll{50, 0};
 PollInterval ValveSchedulePoll{50, 0};
 PollInterval HeaterPoll{500, 0};
-float ETHANE_WEIGHT_REDLINE = -100;
-float NITROUS_WEIGHT_REDLINE = -100;
 int current_highest_redline = 0;
 
 //======================OBJECT DEFNINTIONS=======================//
@@ -340,18 +338,6 @@ void processCommand() {
       String pressure = cmd.substring(cmd.lastIndexOf("_") + 1);
       if (pressure.toFloat()) {
         NITROUS_TARGET_PRESSURE = pressure.toFloat();
-      }
-    }
-    else if (cmd.indexOf("ETHANE_MASS_REDLINE_") >= 0) {
-      String redline = cmd.substring(cmd.lastIndexOf("_") + 1);
-      if (redline.toFloat()) {
-        ETHANE_WEIGHT_REDLINE = redline.toFloat();
-      }
-    }
-    else if (cmd.indexOf("NITROUS_MASS_REDLINE_") >= 0) {
-      String redline = cmd.substring(cmd.lastIndexOf("_") + 1);
-      if (redline.toFloat()) {
-        NITROUS_WEIGHT_REDLINE = redline.toFloat();
       }
     }
     else if (cmd.equalsIgnoreCase("ETHANE_LC_TARE")) {
