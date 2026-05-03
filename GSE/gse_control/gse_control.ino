@@ -16,24 +16,65 @@ PollInterval LCLog{200, 0};
 PollInterval ValveLog{200, 0};
 PollInterval MBVLog{200, 0};
 PollInterval TCLog{200, 0};
-PollInterval RedlinePoll{100, 0};
+PollInterval RedlinePoll{50, 0};
 PollInterval ValveSchedulePoll{50, 0};
 PollInterval HeaterPoll{500, 0};
 float ETHANE_WEIGHT_REDLINE = -100;
 float NITROUS_WEIGHT_REDLINE = -100;
+int current_highest_redline = 0;
+
+//======================OBJECT DEFNINTIONS=======================//
+
+// Pressure Transducers
+Transducer EthaneUpstreamPT(ETHANE_UPSTREAM_PIN, P_MIN, P_MAX_ETHANE);
+Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
+Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
+Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
+Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
+//Transducer ChamberPT(CHAMBER_PT_PIN, P_MIN, P_MAX_CHAMBER);
+Relay EthaneRunValve(ETHANE_RUN_PIN);
+Relay EthaneVent(ETHANE_VENT_PIN);
+Relay NitrousRunValve(NITROUS_RUN_PIN);
+Relay NitrousVent(NITROUS_VENT_PIN);
+Relay Ignitor(IGNITOR_PIN);
+SerialDualClass SerialDual(Serial, Serial2);
+
+MBV* EthaneMBV = nullptr;
+MBV* NitrousMBV = nullptr;
+LoadCell* EthaneLC2 = nullptr;
+LoadCell* EthaneLC1 = nullptr;
+LoadCell* EthaneLC3 = nullptr;
+LoadCell* NitrousLC1 = nullptr;
+LoadCell* NitrousLC2 = nullptr;
+LoadCell* NitrousLC3 = nullptr;
+ThrustCell* ThrustLC = nullptr;
+Heater* EthaneHeater1 = nullptr;
+Heater* EthaneHeater2 = nullptr;
+Heater* NitrousHeater1 = nullptr;
+Heater* NitrousHeater2 = nullptr;
+Thermocouple* RerouteTC = nullptr;
+Thermocouple* RerouteTC2 = nullptr;
+Thermocouple* RerouteTC3 = nullptr;
+ADS1118* ChamberTC = nullptr;
+
+Redline EthaneOverpressure(EthaneOverpressureCondition, EthaneOverpressureResponse, ETHANE_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
+Redline NitrousOverpressure(NitrousOverpressureCondition, NitrousOverpressureResponse, NITROUS_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
+Redline EthaneMBVOpenFailure(EthaneMBVOpenFailureCondition, EthaneMBVOpenFailureResponse, ETHANE_MBV_OPEN_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
+Redline NitrousMBVOpenFailure(NitrousMBVOpenFailureCondition, NitrousMBVOpenFailureResponse, NITROUS_MBV_OPEN_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
+Redline EthaneMBVCloseFailure(EthaneMBVCloseFailureCondition, EthaneMBVCloseFailureResponse, ETHANE_MBV_CLOSE_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
+Redline NitrousMBVCloseFailure(NitrousMBVCloseFailureCondition, NitrousMBVCloseFailureResponse, NITROUS_MBV_CLOSE_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
+Redline CombustionPropogation(CombustionPropogationCondition, CombustionPropogationResponse, COMBUSTION_PROPOGATION_PRIORITY, COMBUSTION_PROPOGATION_COUNTS_THRESHOLD);
+Redline InlineThermalDecomp(InlineThermalDecompCondition, InlineThermalDecompResponse, INLINE_THERMAL_DECOMP_PRIORITY, INLINE_THERMAL_DECOMP_COUNTS_THRESHOLD);
+Redline LostLoadCell(LostLoadCellCondition, LostLoadCellResponse, LOST_LOAD_CELL_PRIORITY, LOST_LOAD_CELL_COUNTS_THRESHOLD);
+Redline EthaneUnderweight(EthaneUnderweightCondition, EthaneUnderweightResponse, ETHANE_UNDERWEIGHT_PRIORITY, UNDERWEIGHT_COUNTS_THRESHOLD);
+Redline NitrousUnderweight(NitrousUnderweightCondition, NitrousUnderweightResponse, NITROUS_UNDERWEIGHT_PRIORITY, UNDERWEIGHT_COUNTS_THRESHOLD);
+Redline EthaneOverweight(EthaneOverweightCondition, EthaneOverweightResponse, ETHANE_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
+Redline NitrousOverweight(NitrousOverweightCondition, NitrousOverweightResponse, NITROUS_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
+Redline Redlines[13] = {EthaneOverpressure, NitrousOverpressure, EthaneMBVOpenFailure, NitrousMBVOpenFailure, EthaneMBVCloseFailure, NitrousMBVCloseFailure, 
+  CombustionPropogation, InlineThermalDecomp, LostLoadCell, EthaneUnderweight, NitrousUnderweight, EthaneOverweight, NitrousOverweight};
 
 //===========================FUNCTIONS============================//
 /** MARK: Helpers */
-
-/** Combine LC readings */
-float readEthaneLC() {
-  return EthaneLC1->read(1) + EthaneLC2->read(1) + EthaneLC3->read(1);
-}
-
-/** Combine LC readings */
-float readNitrousLC() {
-  return NitrousLC1->read(1) + NitrousLC2->read(1) + NitrousLC3->read(1);
-}
 
 /**
  * Our output function.
@@ -60,13 +101,11 @@ void status(TransmissionType format = COMPRESSED) {
       SerialDual.print("LC1: " + String(EthaneLC1->read(1))); 
       SerialDual.print("\tLC2: " + String(EthaneLC2->read(1)));
       SerialDual.print("\tLC3: " + String(EthaneLC3->read(1))); 
-      // SerialDual.print("\tTotal: " + String(SerialDual.print(readEthaneLC()));
       SerialDual.println();
       SerialDual.print("Nitrous: \t");
       SerialDual.print("LC1: " + String(NitrousLC1->read(1))); 
       SerialDual.print("\tLC2: " + String(NitrousLC2->read(1))); 
       SerialDual.print("\tLC3: " + String(NitrousLC3->read(1))); 
-      // SerialDual.print("\tTotal: " + String(readNitrousLC()));
       SerialDual.println();
       SerialDual.print("Thrust: " + String(ThrustLC->read()));
       SerialDual.println();
@@ -83,50 +122,51 @@ void status(TransmissionType format = COMPRESSED) {
     }
 
     case COMPRESSED: {
-      String datastream = "";
       // FORMAT: DATA|millis|KEY:VAL|KEY:VAL|...
-      datastream += "DATA|" + String((time_elapsed/1000.0), 3);
       if(time_absolute - PTLog.last_trigger_ms >= PTLog.interval_ms) {
-        datastream += "|PT_EU:" + String(EthaneUpstreamPT.readPressure(), 3);
-        datastream += "|PT_ED:" + String(EthaneDownstreamPT.readPressure(), 3);
-        datastream += "|PT_NU:" + String(NitrousUpstreamPT.readPressure(), 3);
-        datastream += "|PT_ND:" + String(NitrousDownstreamPT.readPressure(), 3);
+        SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3);
+        SerialDual.print("|PT_EU:");  SerialDual.print(EthaneUpstreamPT.readPressure(), 3);
+        SerialDual.print("|PT_ED:");  SerialDual.print(EthaneDownstreamPT.readPressure(), 3);
+        SerialDual.print("|PT_NU:");  SerialDual.print(NitrousUpstreamPT.readPressure(), 3);
+        SerialDual.print("|PT_ND:");  SerialDual.print(NitrousDownstreamPT.readPressure(), 3);
         PTLog.last_trigger_ms = time_absolute - (time_absolute % PTLog.interval_ms);
         print_current_poll = true;
       }
       
-      // if(time_absolute - LCLog.last_trigger_ms >= LCLog.interval_ms) {
-      //   datastream += "|LC_E1:" + String(EthaneLC1->read(1));
-      //   datastream += "|LC_E2:" + String(EthaneLC2->read(1));
-      //   datastream += "|LC_E3:" + String(EthaneLC3->read(1));
-      //   datastream += "|LC_N1:" + String(NitrousLC1->read(1));
-      //   datastream += "|LC_N2:" + String(NitrousLC2->read(1));
-      //   datastream += "|LC_N3:" + String(NitrousLC3->read(1));
-      //   datastream += "|LC_T:" + String(ThrustLC->read());
-      //   LCLog.last_trigger_ms = time_absolute - (time_absolute % LCLog.interval_ms);
-      //   print_current_poll = true;
-      // }
+      if(time_absolute - LCLog.last_trigger_ms >= LCLog.interval_ms) {
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
+        SerialDual.print("|LC_E1:");  SerialDual.print(EthaneLC1->read(1));
+        SerialDual.print("|LC_E2:");  SerialDual.print(EthaneLC2->read(1));
+        SerialDual.print("|LC_E3:");  SerialDual.print(EthaneLC3->read(1));
+        SerialDual.print("|LC_N1:");  SerialDual.print(NitrousLC1->read(1));
+        SerialDual.print("|LC_N2:");  SerialDual.print(NitrousLC2->read(1));
+        SerialDual.print("|LC_N3:");  SerialDual.print(NitrousLC3->read(1));
+        SerialDual.print("|LC_T:");   SerialDual.print(ThrustLC->read());
+        LCLog.last_trigger_ms = time_absolute - (time_absolute % LCLog.interval_ms);
+        print_current_poll = true;
+      }
 
       if(time_absolute - ValveLog.last_trigger_ms >= ValveLog.interval_ms) {
-        datastream += "|ERV:" + String(EthaneRunValve.state());
-        datastream += "|EV:" + String(EthaneVent.state());
-        datastream += "|NRV:" + String(NitrousRunValve.state());
-        datastream += "|NV:" + String(NitrousVent.state());
-        datastream += "|MBV_E:" + String(EthaneMBV->getCurrentDegrees());
-        datastream += "|MBV_N:" + String(NitrousMBV->getCurrentDegrees());
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
+        SerialDual.print("|ERV:");    SerialDual.print(EthaneRunValve.state());
+        SerialDual.print("|EV:");     SerialDual.print(EthaneVent.state());
+        SerialDual.print("|NRV:");    SerialDual.print(NitrousRunValve.state());
+        SerialDual.print("|NV:");     SerialDual.print(NitrousVent.state());
+        SerialDual.print("|MBV_E:");  SerialDual.print(EthaneMBV->getCurrentDegrees());
+        SerialDual.print("|MBV_N:");  SerialDual.print(NitrousMBV->getCurrentDegrees());
         ValveLog.last_trigger_ms = time_absolute - (time_absolute % ValveLog.interval_ms);
         print_current_poll = true;
       }
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
-        /** TODO: If you uncomment the line below, code will stop. Whoops. */
-        datastream += "|TC_C:" + String(ChamberTC->getTemperature());
-        datastream += "|TC_R:" + String(RerouteTC->readHot());
+        if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
+        SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->getTemperature());
+        SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
       }
 
-      if (print_current_poll) SerialDual.println(datastream);
+      if (print_current_poll) { SerialDual.println(); }
       break;
     }
 
@@ -321,82 +361,6 @@ void processCommand() {
   }
 }
 
-void EMERGENCY_VENT() {
-  // clear the schedules
-  EthaneVent.clearSchedule();
-  NitrousVent.clearSchedule();
-  EthaneRunValve.clearSchedule();
-  NitrousRunValve.clearSchedule();
-  EthaneMBV->clearSchedule();
-  NitrousMBV->clearSchedule();
-
-  if (EthaneMBV->isOpen()) {
-    EthaneMBV->next_90();
-  }
-  if (NitrousMBV->isOpen()) {
-    NitrousMBV->next_90();
-  }
-  ventEthane();
-  ventNitrous();
-}
-
-void ventEthane() {
-  EthaneRunValve.close();
-  EthaneVent.setNextActuation(VENT_DELAY, true);
-  EthaneVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
-}
-
-void ventNitrous() {
-  NitrousRunValve.close();
-  NitrousVent.setNextActuation(VENT_DELAY, true);
-  NitrousVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
-}
-
-void coldFlowEthane(long duration_ms) {
-  EthaneRunValve.clearSchedule();
-  EthaneMBV->clearSchedule();
-
-  EthaneRunValve.open();
-
-  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME);
-  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
-
-  EthaneRunValve.setNextActuation(10000 + duration_ms, false);
-}
-
-void coldFlowNitrous(long duration_ms) {
-  NitrousRunValve.open();
-
-  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME);
-  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
-
-  NitrousRunValve.setNextActuation(2*RUN_EQUALIZE_TIME + duration_ms, false);
-}
-
-void staticFire() {
-  //NitrousRunValve.open();
-  EthaneRunValve.open();
-
-  Ignitor.setNextActuation(5000, true);
-  
-  //if (ChamberTC->getTemperature() > 100) {
-    //NitrousMBV->next_90();
-    EthaneMBV->setNextActuation(ETHANE_DELAY);
-    //NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);
-    EthaneMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY);
-    //NitrousRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
-    EthaneRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
-    
-    // Vent
-    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY, true);
-    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY + VENT_TIME, false);
-    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + VENT_TIME + 1100, true);
-    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + 2*VENT_TIME + 1100, false);
-
-    static_fire_initializing = false;
-  //}
-}
-
 //===========================EXECUTION============================//
 /**
  * MARK: Execution
@@ -456,12 +420,6 @@ void setup()
   EthaneHeater2->setTarget(ETHANE_TARGET_PRESSURE);
   NitrousHeater1->setTarget(NITROUS_TARGET_PRESSURE);
   NitrousHeater2->setTarget(NITROUS_TARGET_PRESSURE);
-
-  EthaneUpstreamPT.setRedline(ETHANE_PRESSURE_REDLINE, OVERPRESSURE_COUNTS_THRESHOLD);
-  NitrousUpstreamPT.setRedline(ETHANE_PRESSURE_REDLINE, OVERPRESSURE_COUNTS_THRESHOLD);
-
-  EthaneLC1->setRedline(ETHANE_WEIGHT_REDLINE, UNDERWEIGHT_COUNTS_THRESHOLD);
-  NitrousLC1->setRedline(NITROUS_WEIGHT_REDLINE, UNDERWEIGHT_COUNTS_THRESHOLD);
   
   delay(1200);
   if (print_data) {
@@ -520,55 +478,10 @@ void loop()
 
   // Redlines
   if(time_absolute - RedlinePoll.last_trigger_ms >= RedlinePoll.interval_ms) {
-    
-    if (EthaneUpstreamPT.checkRedline()) {
-      SerialDual.println("CRITICAL ERROR: ETHANE PRESSURE REDLINE EXCEEDED");
 
-      EthaneMBV->clearSchedule();
-      EthaneRunValve.clearSchedule();
-      EthaneVent.clearSchedule();
-
-      if (EthaneMBV->isOpen()) { EthaneMBV->next_90(); }
-      EthaneVent.open();
-      EthaneVent.setNextActuation(OVERPRESSURE_VENT_TIME, false);
-    }
-
-    if (NitrousUpstreamPT.checkRedline()) {
-      SerialDual.println("CRITICAL ERROR: NITROUS PRESSURE REDLINE EXCEEDED");
-
-      NitrousMBV->clearSchedule();
-      NitrousRunValve.clearSchedule();
-      NitrousVent.clearSchedule();
-
-      if (NitrousMBV->isOpen()) { NitrousMBV->next_90(); }
-      NitrousVent.open();
-      NitrousVent.setNextActuation(OVERPRESSURE_VENT_TIME, false);
-    }
-  
-    if (EthaneLC1->checkRedline()) {
-      SerialDual.println("CRITICAL ERROR: ETHANE WEIGHT REDLINE EXCEEDED");
-
-      EthaneMBV->clearSchedule();
-      EthaneRunValve.clearSchedule();
-      EthaneVent.clearSchedule();
-
-      if (EthaneMBV->isOpen()) { EthaneMBV->next_90(); }
-      EthaneRunValve.close();
-      EthaneVent.open();
-      EthaneVent.setNextActuation(VENT_TIME, false);
-    }
-
-    if (NitrousLC1->checkRedline()) {
-      SerialDual.println("CRITICAL ERROR: NITROUS WEIGHT REDLINE EXCEEDED");
-
-      NitrousMBV->clearSchedule();
-      NitrousRunValve.clearSchedule();
-      NitrousVent.clearSchedule();
-
-      if (NitrousMBV->isOpen()) { NitrousMBV->next_90(); }
-      NitrousRunValve.close();
-      NitrousVent.open();
-      NitrousVent.setNextActuation(VENT_TIME, false);
+    if (current_highest_redline > 0) current_highest_redline--;
+    for (Redline r : Redlines) {
+      current_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
     }
 
     RedlinePoll.last_trigger_ms = time_absolute - (time_absolute % RedlinePoll.interval_ms);

@@ -8,6 +8,8 @@
 #include "heater.h"
 #include "thrustCell.h"
 #include "serial.h"
+#include "redline.h"
+#include "procedures.h"
 
 #include <StandardCplusplus.h>
 #include <string>
@@ -23,7 +25,7 @@
 #define NITROUS_UPSTREAM_PIN    A10
 #define NITROUS_DOWNSTREAM_PIN  A9
 #define REROUTE_PT_PIN          A8
-#define CHAMBER_PT_PIN          37  //CHECK--doesn't seem right
+#define CHAMBER_PT_PIN          A13  
 
 #define ETHANE_RUN_PIN   47
 #define ETHANE_VENT_PIN  46
@@ -62,9 +64,28 @@
 // Redlines
 #define ETHANE_PRESSURE_REDLINE   1100
 #define NITROUS_PRESSURE_REDLINE  1100
-#define OVERPRESSURE_COUNTS_THRESHOLD 25
 
-#define UNDERWEIGHT_COUNTS_THRESHOLD  20
+#define ETHANE_OVERPRESSURE_PRIORITY        1
+#define NITROUS_OVERPRESSURE_PRIORITY       1
+#define ETHANE_MBV_OPEN_FAILURE_PRIORITY    1
+#define NITROUS_MBV_OPEN_FAILURE_PRIORITY   1
+#define ETHANE_MBV_CLOSE_FAILURE_PRIORITY   1
+#define NITROUS_MBV_CLOSE_FAILURE_PRIORITY  1
+#define COMBUSTION_PROPOGATION_PRIORITY     1
+#define INLINE_THERMAL_DECOMP_PRIORITY      1
+#define LOST_LOAD_CELL_PRIORITY             1
+#define ETHANE_UNDERWEIGHT_PRIORITY         1
+#define NITROUS_UNDERWEIGHT_PRIORITY        1
+#define ETHANE_OVERWEIGHT_PRIORITY          1
+#define NITROUS_OVERWEIGHT_PRIORITY         1
+
+#define OVERPRESSURE_COUNTS_THRESHOLD               20
+#define MBV_FAILURE_COUNTS_THRESHOLD                20
+#define COMBUSTION_PROPOGATION_COUNTS_THRESHOLD     20
+#define INLINE_THERMAL_DECOMP_COUNTS_THRESHOLD      20
+#define LOST_LOAD_CELL_COUNTS_THRESHOLD             20
+#define UNDERWEIGHT_COUNTS_THRESHOLD                20
+#define OVERWEIGHT_COUNTS_THRESHOLD                 20
 
 // PT Calibration Data (PSIG)
 #define P_MIN         0.0
@@ -139,50 +160,67 @@ extern float NITROUS_WEIGHT_REDLINE;
 //======================OBJECT DECLARATIONS=======================//
 
 // Pressure Transducers
-Transducer EthaneUpstreamPT(ETHANE_UPSTREAM_PIN, P_MIN, P_MAX_ETHANE);
-Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
-Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
-Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
-Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
-//Transducer ChamberPT(CHAMBER_PT_PIN, P_MIN, P_MAX_CHAMBER);
+extern Transducer EthaneUpstreamPT;
+extern Transducer EthaneDownstreamPT;
+extern Transducer NitrousUpstreamPT;
+extern Transducer NitrousDownstreamPT;
+extern Transducer ReroutePT;
+//Transducer ChamberPT;
 
 // Solenoids
-Relay EthaneRunValve(ETHANE_RUN_PIN);
-Relay EthaneVent(ETHANE_VENT_PIN);
-Relay NitrousRunValve(NITROUS_RUN_PIN);
-Relay NitrousVent(NITROUS_VENT_PIN);
+extern Relay EthaneRunValve;
+extern Relay EthaneVent;
+extern Relay NitrousRunValve;
+extern Relay NitrousVent;
 
 // Motorized Ball Valves
-MBV* EthaneMBV;
-MBV* NitrousMBV;
+extern MBV* EthaneMBV;
+extern MBV* NitrousMBV;
 
 // Load Cells
-LoadCell* EthaneLC2;
-LoadCell* EthaneLC1;
-LoadCell* EthaneLC3;
-LoadCell* NitrousLC1;
-LoadCell* NitrousLC2;
-LoadCell* NitrousLC3;
+extern LoadCell* EthaneLC2;
+extern LoadCell* EthaneLC1;
+extern LoadCell* EthaneLC3;
+extern LoadCell* NitrousLC1;
+extern LoadCell* NitrousLC2;
+extern LoadCell* NitrousLC3;
 
-ThrustCell* ThrustLC;
+extern ThrustCell* ThrustLC;
 
 // Tank Heaters
-Heater* EthaneHeater1;
-Heater* EthaneHeater2;
-Heater* NitrousHeater1;
-Heater* NitrousHeater2;
+extern Heater* EthaneHeater1;
+extern Heater* EthaneHeater2;
+extern Heater* NitrousHeater1;
+extern Heater* NitrousHeater2;
 
 // Thermocouple
-Thermocouple* RerouteTC;
-Thermocouple* RerouteTC2;
-Thermocouple* RerouteTC3;
-ADS1118* ChamberTC; 
+extern Thermocouple* RerouteTC;
+extern Thermocouple* RerouteTC2;
+extern Thermocouple* RerouteTC3;
+extern ADS1118* ChamberTC; 
 
 // Ignitor
-Relay Ignitor(IGNITOR_PIN);
+extern Relay Ignitor;
 
 /** Serial Communication for Radios
  * - Serial is hardline
  * - Serial2 is radio
 */
-SerialDualClass SerialDual(Serial, Serial2);
+extern SerialDualClass SerialDual;
+
+// Redlines
+extern int current_highest_redline;
+extern Redline EthaneOverpressure;
+extern Redline NitrousOverpressure;
+extern Redline EthaneMBVOpenFailure;
+extern Redline NitrousMBVOpenFailure;
+extern Redline EthaneMBVCloseFailure;
+extern Redline NitrousMBVCloseFailure;
+extern Redline CombustionPropogation;
+extern Redline InlineThermalDecomp;
+extern Redline LostLoadCell;
+extern Redline EthaneUnderweight;
+extern Redline NitrousUnderweight;
+extern Redline EthaneOverweight;
+extern Redline NitrousOverweight;
+

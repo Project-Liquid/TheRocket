@@ -1,0 +1,116 @@
+#include "procedures.h"
+
+//============================REDLINES============================//
+
+// Trigger Conditions
+bool EthaneOverpressureCondition() { return EthaneUpstreamPT.readPressure() > ETHANE_PRESSURE_REDLINE; }
+bool NitrousOverpressureCondition() { return NitrousUpstreamPT.readPressure() > NITROUS_PRESSURE_REDLINE; }
+bool EthaneMBVOpenFailureCondition() { return; }
+bool NitrousMBVOpenFailureCondition() { return; }
+bool EthaneMBVCloseFailureCondition() { return; }
+bool NitrousMBVCloseFailureCondition() { return; }
+bool CombustionPropogationCondition() { return; }
+bool InlineThermalDecompCondition() { return; }
+bool LostLoadCellCondition() { return; }
+bool EthaneUnderweightCondition() { return EthaneLC1->readJoint(1) < ETHANE_WEIGHT_REDLINE; }
+bool NitrousUnderweightCondition() { return NitrousLC1->readJoint(1) < NITROUS_WEIGHT_REDLINE; }
+bool EthaneOverweightCondition() { return; }
+bool NitrousOverweightCondition() { return; }
+
+// Redline Responses
+void EthaneOverpressureResponse() {
+  
+}
+
+void NitrousOverpressureResponse() {
+
+}
+
+void EthaneMBVOpenFailureResponse() {}
+void NitrousMBVOpenFailureResponse() {}
+void EthaneMBVCloseFailureResponse() {}
+void NitrousMBVCloseFailureResponse() {}
+void CombustionPropogationResponse() {}
+void InlineThermalDecompResponse() {}
+void LostLoadCellResponse() {}
+void EthaneUnderweightResponse() {}
+void NitrousUnderweightResponse() {}
+void EthaneOverweightResponse() {}
+void NitrousOverweightResponse() {}
+
+//=========================TEST SEQUENCES=========================//
+void EMERGENCY_VENT() {
+  // clear the schedules
+  EthaneVent.clearSchedule();
+  NitrousVent.clearSchedule();
+  EthaneRunValve.clearSchedule();
+  NitrousRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+  NitrousMBV->clearSchedule();
+
+  if (EthaneMBV->isOpen()) {
+    EthaneMBV->next_90();
+  }
+  if (NitrousMBV->isOpen()) {
+    NitrousMBV->next_90();
+  }
+  ventEthane();
+  ventNitrous();
+}
+
+void ventEthane() {
+  EthaneRunValve.close();
+  EthaneVent.setNextActuation(VENT_DELAY, true);
+  EthaneVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
+}
+
+void ventNitrous() {
+  NitrousRunValve.close();
+  NitrousVent.setNextActuation(VENT_DELAY, true);
+  NitrousVent.setNextActuation(VENT_DELAY + VENT_TIME, false);
+}
+
+void coldFlowEthane(long duration_ms) {
+  EthaneRunValve.clearSchedule();
+  EthaneMBV->clearSchedule();
+
+  EthaneRunValve.open();
+
+  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME);
+  EthaneMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
+
+  EthaneRunValve.setNextActuation(10000 + duration_ms, false);
+}
+
+void coldFlowNitrous(long duration_ms) {
+  NitrousRunValve.open();
+
+  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME);
+  NitrousMBV->setNextActuation(RUN_EQUALIZE_TIME + duration_ms);
+
+  NitrousRunValve.setNextActuation(2*RUN_EQUALIZE_TIME + duration_ms, false);
+}
+
+void staticFire() {
+  //NitrousRunValve.open();
+  EthaneRunValve.open();
+
+  Ignitor.setNextActuation(5000, true);
+  
+  //if (ChamberTC->getTemperature() > 100) {
+    //NitrousMBV->next_90();
+    EthaneMBV->setNextActuation(ETHANE_DELAY);
+    //NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);
+    EthaneMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY);
+    //NitrousRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
+    EthaneRunValve.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100, false);
+    
+    // Vent
+    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY, true);
+    EthaneVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + 100 + VENT_DELAY + VENT_TIME, false);
+    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + VENT_TIME + 1100, true);
+    //NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + 2*VENT_TIME + 1100, false);
+
+    static_fire_initializing = false;
+  //}
+}
