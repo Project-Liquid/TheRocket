@@ -222,6 +222,38 @@ class GroundStation(QMainWindow):
         # CSV logging
         self.log_rows = []
         self.logging_active = False
+        self.fieldnames = [
+            'time_s',
+            'millis',
+            'PT_EU',
+            'PT_ED',
+            'PT_NU',
+            'PT_ND',
+            'PT_RR',
+            'PT_CH',
+            'LC_E1',
+            'LC_E2',
+            'LC_E3',
+            'LC_N1',
+            'LC_N2',
+            'LC_N3',
+            'LC_T',
+            'ERV',
+            'EV',
+            'NRV',
+            'NV',
+            'MBV_E',
+            'MBV_N',
+            'TC_C',
+            'TC_R',
+            'NH1',
+            'NH2',
+            'EH1',
+            'EH2',
+            'RD_H',
+            'RD_L',
+            
+        ]
 
         # Serial monitor
         self.serial_monitor_lines = deque(maxlen=500)
@@ -1321,9 +1353,13 @@ class GroundStation(QMainWindow):
             self.log_btn.setStyleSheet("background:#388bfd; color:#fff; border-radius:4px;")
 
     def _export_csv(self):
+
         if not self.log_rows:
             QMessageBox.information(self, "No Data", "No logged data to export.")
             return
+        else:
+            QMessageBox.information(self, "Exporting", f"Exporting {len(self.log_rows)} rows of data.")
+
         
         if self.log_folder_path is not None and self.log_start_time is not None:
             fname = self.log_folder_path / f"gse_log_{self.log_start_time.strftime('%Y%m%d_%H%M%S')}.csv"
@@ -1335,7 +1371,7 @@ class GroundStation(QMainWindow):
         
         if fname:
             with open(fname, 'w', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=self.log_rows[0].keys())
+                writer = csv.DictWriter(f, fieldnames=self.fieldnames)
                 writer.writeheader()
                 writer.writerows(self.log_rows)
             QMessageBox.information(self, "Exported", f"Saved {len(self.log_rows)} rows to:\n{fname}")
@@ -1410,48 +1446,51 @@ class GroundStation(QMainWindow):
             self.HISTORY_LEN = max(len(self.log_rows) + 10, self.HISTORY_LEN)  # increase history length if needed to fit all data
             self.reque()
             for row in self.log_rows:
-                new_row = {}
-                for key, value in row.items():
-                    if key == 'time_s':
-                        new_row['millis'] = row['time_s'] * 1000
-                    if key == 'PT_EU':
-                        new_row['PT_EU'] = row['PT_EU']
-                    if key == 'PT_ED':
-                        new_row['PT_ED'] = row['PT_ED']
-                    if key == 'PT_NU':
-                        new_row['PT_NU'] = row['PT_NU']
-                    if key == 'PT_ND':
-                        new_row['PT_ND'] = row['PT_ND']
-                    if key == 'LC_E1':
-                        new_row['LC_E1'] = row['LC_E1']
-                    if key == 'LC_E2':
-                        new_row['LC_E2'] = row['LC_E2']
-                    if key == 'LC_E3':
-                        new_row['LC_E3'] = row['LC_E3']
-                    if key == 'ET_TOTAL':
-                        new_row['ET_TOTAL'] = row['ET_TOTAL']
-                    if key == 'NLC1':
-                        new_row['LC_N1'] = row['NLC1']
-                    if key == 'NLC2':
-                        new_row['LC_N2'] = row['NLC2']
-                    if key == 'NLC3':
-                        new_row['LC_N3'] = row['NLC3']
-                    if key == 'NIT_TOTAL':
-                        new_row['NIT_TOTAL'] = row['NIT_TOTAL']
-                    if key == 'LC_T':
-                        new_row['LC_T'] = row['LC_T']
-                    if key == 'ERV':
-                        new_row['ERV'] = row['ERV']
-                    if key == 'EV':
-                        new_row['EV'] = row['EV']
-                    if key == 'NRV':
-                        new_row['NRV'] = row['NRV']
-                    if key == 'NV':
-                        new_row['NV'] = row['NV']
-                    try:
-                        new_row[key] = float(value)
-                    except ValueError:
-                        new_row[key] = value
+                new_row = row
+                if new_row.get('time_s') is not None and new_row.get('millis') is None:
+                    new_row['millis'] = row['time_s'] * 1000
+                
+
+                # for key, value in row.items():
+                    # if key == 'time_s':
+                    # if key == 'PT_EU':
+                    #     new_row['PT_EU'] = row['PT_EU']
+                    # if key == 'PT_ED':
+                    #     new_row['PT_ED'] = row['PT_ED']
+                    # if key == 'PT_NU':
+                    #     new_row['PT_NU'] = row['PT_NU']
+                    # if key == 'PT_ND':
+                    #     new_row['PT_ND'] = row['PT_ND']
+                    # if key == 'LC_E1':
+                    #     new_row['LC_E1'] = row['LC_E1']
+                    # if key == 'LC_E2':
+                    #     new_row['LC_E2'] = row['LC_E2']
+                    # if key == 'LC_E3':
+                    #     new_row['LC_E3'] = row['LC_E3']
+                    # if key == 'ET_TOTAL':
+                    #     new_row['ET_TOTAL'] = row['ET_TOTAL']
+                    # if key == 'NLC1':
+                    #     new_row['LC_N1'] = row['NLC1']
+                    # if key == 'NLC2':
+                    #     new_row['LC_N2'] = row['NLC2']
+                    # if key == 'NLC3':
+                    #     new_row['LC_N3'] = row['NLC3']
+                    # if key == 'NIT_TOTAL':
+                    #     new_row['NIT_TOTAL'] = row['NIT_TOTAL']
+                    # if key == 'LC_T':
+                    #     new_row['LC_T'] = row['LC_T']
+                    # if key == 'ERV':
+                    #     new_row['ERV'] = row['ERV']
+                    # if key == 'EV':
+                    #     new_row['EV'] = row['EV']
+                    # if key == 'NRV':
+                    #     new_row['NRV'] = row['NRV']
+                    # if key == 'NV':
+                    #     new_row['NV'] = row['NV']
+                    # try:
+                    #     new_row[key] = float(value)
+                    # except ValueError:
+                    #     new_row[key] = value
             
                 self._on_data(new_row)
 

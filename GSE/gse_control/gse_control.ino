@@ -546,7 +546,7 @@ void loop()
     }
 
     if (current_highest_redline > -1) {
-      SerialDual.print("REDLINE|"); SerialDual.print((time_elapsed/1000.0), 3);
+      SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3);
       SerialDual.print("|RD_H:"); SerialDual.print(current_highest_redline);
       SerialDual.print("|RD_L:"); SerialDual.print(last_highest_redline);
       SerialDual.println();
