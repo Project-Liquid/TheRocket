@@ -54,10 +54,10 @@ Heater* EthaneHeater1 = nullptr;
 Heater* EthaneHeater2 = nullptr;
 Heater* NitrousHeater1 = nullptr;
 Heater* NitrousHeater2 = nullptr;
-// Thermocouple* RerouteTC = nullptr;
-// Thermocouple* RerouteTC2 = nullptr;
-// Thermocouple* RerouteTC3 = nullptr;
-// ADS1118* ChamberTC = nullptr;
+Thermocouple* RerouteTC = nullptr;
+Thermocouple* RerouteTC2 = nullptr;
+Thermocouple* RerouteTC3 = nullptr;
+ADS1118* ChamberTC = nullptr;
 
 Redline EthaneOverpressure(EthaneOverpressureCondition, EthaneOverpressureResponse, ETHANE_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
 Redline NitrousOverpressure(NitrousOverpressureCondition, NitrousOverpressureResponse, NITROUS_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
@@ -425,20 +425,20 @@ void setup()
   ThrustLC->setCalFactor(-5.83);
   SerialDual.println("START3");
 
-  // RerouteTC = new Thermocouple(0x67);
-  // RerouteTC2 = new Thermocouple(0x65);
-  // RerouteTC3 = new Thermocouple(0x66);
+  RerouteTC = new Thermocouple(0x67);
+  RerouteTC2 = new Thermocouple(0x65);
+  RerouteTC3 = new Thermocouple(0x66);
 
-  // pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
-  // digitalWrite(CHAMBER_TC_PIN, HIGH);
-  // ChamberTC = new ADS1118(CHAMBER_TC_PIN);
+  pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
+  digitalWrite(CHAMBER_TC_PIN, HIGH);
+  ChamberTC = new ADS1118(CHAMBER_TC_PIN);
   delay(100);
   SerialDual.println("START4");
 
-  // ChamberTC->begin();
-  // // ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
-  // // ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
-  // // ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
+  ChamberTC->begin();
+  // ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
+  // ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
+  // ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
 
   EthaneHeater1 = new Heater(ETHANE_HEATER_1_PIN, &EthaneUpstreamPT);
   EthaneHeater2 = new Heater(ETHANE_HEATER_2_PIN, &EthaneUpstreamPT);
