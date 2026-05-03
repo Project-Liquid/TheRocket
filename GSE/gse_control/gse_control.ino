@@ -440,9 +440,9 @@ void setup()
   SerialDual.println("START4");
 
   ChamberTC->begin();
-  // ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
-  // ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
-  // ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
+  ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
+  ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
+  ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
 
   EthaneHeater1 = new Heater(ETHANE_HEATER_1_PIN, &EthaneUpstreamPT);
   EthaneHeater2 = new Heater(ETHANE_HEATER_2_PIN, &EthaneUpstreamPT);
