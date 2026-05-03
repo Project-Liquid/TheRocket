@@ -9,10 +9,10 @@ bool EthaneMBVCloseFailureCondition() { return; }
 bool NitrousMBVCloseFailureCondition() { return; }
 bool CombustionPropogationCondition() { return; }
 bool InlineThermalDecompCondition() { return; }
-//bool LostLoadCellCondition() { return; }
+bool LostLoadCellCondition() { return; }
 bool EthaneUnderweightCondition() { return EthaneLC1->readJoint(1) < ETHANE_WEIGHT_REDLINE; }
-//bool NitrousUnderweightCondition() { return;}
-//bool EthaneOverweightCondition() { return; }
+bool NitrousUnderweightCondition() { return;}
+bool EthaneOverweightCondition() { return; }
 bool NitrousOverweightCondition() { return NitrousLC1->readJoint(1) > NITROUS_WEIGHT_REDLINE;}
 
 // Redline Responses
@@ -50,10 +50,10 @@ void CombustionPropogationResponse() {
   
 }
 void InlineThermalDecompResponse() {}
-//void LostLoadCellResponse() {}
+void LostLoadCellResponse() {}
 void EthaneUnderweightResponse() {EthaneRunValve.neutralize();}
-//void NitrousUnderweightResponse() {}
-//void EthaneOverweightResponse() {}
+void NitrousUnderweightResponse() {}
+void EthaneOverweightResponse() {}
 void NitrousOverweightResponse() {NitrousRunValve.neutralize();}
 
 //=========================TEST SEQUENCES=========================//

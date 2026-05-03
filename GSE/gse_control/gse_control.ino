@@ -19,6 +19,8 @@ PollInterval TCLog{200, 0};
 PollInterval RedlinePoll{50, 0};
 PollInterval ValveSchedulePoll{50, 0};
 PollInterval HeaterPoll{500, 0};
+float ETHANE_WEIGHT_REDLINE = -27;
+float NITROUS_WEIGHT_REDLINE = 19.5;
 int current_highest_redline = 0;
 
 //======================OBJECT DEFNINTIONS=======================//
@@ -157,7 +159,7 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|TC_C:"); SerialDual.print(Thermocouple.cToF(ChamberTC->getTemperature()));
+        SerialDual.print("|TC_C:"); SerialDual.print(Thermocouple::cToF(ChamberTC->getTemperature()));
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
@@ -206,7 +208,7 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|TC_C:"); SerialDual.print((ChamberTC->getMillliVolts()/0.041) + ChamberTC->getTemperature());
+        SerialDual.print("|TC_C:"); SerialDual.print((ChamberTC->getMilliVolts()/0.041) + ChamberTC->getTemperature());
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;

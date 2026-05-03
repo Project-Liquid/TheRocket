@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
-#include <StandardCplusplus.h>
-#include <string>
+//#include <ArduinoSTL.h>
+//#include <string>
 
 class Transducer {
 private:
