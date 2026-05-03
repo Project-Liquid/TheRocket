@@ -14,7 +14,7 @@ private:
   struct ScheduledActuation {
     unsigned long trigger_ms;
     bool open;
-
+  };
   ScheduledActuation schedule[MAX_SCHEDULE];
   int head = 0;  // Index of the oldest task
   int tail = 0;  // Index of the newest task
