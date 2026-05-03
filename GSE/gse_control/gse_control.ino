@@ -380,6 +380,30 @@ void processCommand() {
     NitrousLC1->tare();
     NitrousLC2->tare();
     NitrousLC3->tare();
+  } else if (cmd.equalsIgnoreCase("THRUST_LC_TARE")) {
+    ThrustLC->tare();
+  } else if (cmd.equalsIgnoreCase("NITROUS_H1_ON")) {
+    NitrousHeater1->on();
+  } else if (cmd.equalsIgnoreCase("NITROUS_H1_OFF")) {
+    NitrousHeater1->off();
+  } else if (cmd.equalsIgnoreCase("NITROUS_H2_ON")) {
+    NitrousHeater2->on();
+  } else if (cmd.equalsIgnoreCase("NITROUS_H2_OFF")) {
+    NitrousHeater2->off();
+  } else if (cmd.equalsIgnoreCase("ETHANE_H1_ON")) {
+    EthaneHeater1->on();
+  } else if (cmd.equalsIgnoreCase("ETHANE_H1_OFF")) {
+    EthaneHeater1->off();
+  } else if (cmd.equalsIgnoreCase("ETHANE_H2_ON")) {
+    EthaneHeater2->on();
+  } else if (cmd.equalsIgnoreCase("ETHANE_H2_OFF")) {
+    EthaneHeater2->off();
+  } else if (cmd.equalsIgnoreCase("HEATERS_OFF")) {
+    heaters_active = false;
+    EthaneHeater1->off();
+    EthaneHeater2->off();
+    NitrousHeater1->off();
+    NitrousHeater2->off();
   }
 
   else {

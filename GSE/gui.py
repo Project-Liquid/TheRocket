@@ -273,11 +273,13 @@ class GroundStation(QMainWindow):
         tc_grp = self._build_tc_group()
         export_grp = self._build_export_group()
         # Give thrust and TC groups more horizontal space (stretch > export)
-        t_bar.addWidget(thrust_grp, 3)
-        t_bar.addWidget(tc_grp, 3)
+        t_bar.addWidget(thrust_grp, 1)
+        t_bar.addWidget(tc_grp, 2)
         # t_bar.addWidget(self._build_heater_group(), 3)
-        t_bar.addWidget(export_grp, 5)
-        t_bar.addWidget(self._build_cold_flow_group(), 3)
+        t_bar.addWidget(self._build_cold_flow_group(), 2)
+        t_bar.addWidget(self._build_static_fire_group(), 2)
+        t_bar.addWidget(export_grp, 1)
+        t_bar.addWidget(self._build_serial_monitor_group(), 3)
         t_bar.addStretch()
         root.addLayout(t_bar)
 
@@ -292,7 +294,6 @@ class GroundStation(QMainWindow):
         left.addWidget(self._build_ethane_mbv_group())
         left.addWidget(self._build_ethane_heater_group())
         # left.addWidget(self._build_tc_group())
-        left.addWidget(self._build_serial_monitor_group())
         left.addStretch()
 
         right = QVBoxLayout()
@@ -310,8 +311,6 @@ class GroundStation(QMainWindow):
 
         center = QVBoxLayout()
         center.addWidget(self._build_chart_group())
-        center.addWidget(self._build_cold_flow_group())
-        center.addWidget(self._build_static_fire_group())
 
         content.addLayout(left, 3)
         content.addLayout(center, 5)
@@ -365,25 +364,6 @@ class GroundStation(QMainWindow):
         bar.addStretch()
         return bar
 
-    def _build_pt_group(self):
-        grp = QGroupBox("PRESSURE TRANSDUCERS")
-        grp.setFont(QFont("Courier New", 9, QFont.Bold))
-        grid = QGridLayout(grp)
-        grid.setSpacing(6)
-
-        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
-        # once redlines are determined by fluids.
-        self.pt_et_up  = SensorLabel("Ethane Upstream",   "psi", warning_hi=900)
-        self.pt_et_dn  = SensorLabel("Ethane Downstream", "psi", warning_hi=900)
-        self.pt_nit_up = SensorLabel("Nitrous Upstream",  "psi", warning_hi=1400)
-        self.pt_nit_dn = SensorLabel("Nitrous Downstream","psi", warning_hi=1400)
-
-        grid.addWidget(self.pt_et_up,  0, 0)
-        grid.addWidget(self.pt_et_dn,  0, 1)
-        grid.addWidget(self.pt_nit_up, 1, 0)
-        grid.addWidget(self.pt_nit_dn, 1, 1)
-        return grp
-
     def _build_ethane_pt_group(self):
         grp = QGroupBox("ETHANE PRESSURE TRANSDUCERS")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
@@ -392,11 +372,11 @@ class GroundStation(QMainWindow):
 
         # TODO: The redlines in GUI are not the same as redline in GUI. Must change
         # once redlines are determined by fluids.
-        self.pt_et_up  = SensorLabel("Ethane Upstream",   "psi", warning_hi=900)
-        self.pt_et_dn  = SensorLabel("Ethane Downstream", "psi", warning_hi=900)
+        self.pt_eu_lbl  = SensorLabel("Ethane Upstream",   "psi", warning_hi=900)
+        self.pt_ed_lbl  = SensorLabel("Ethane Downstream", "psi", warning_hi=900)
         
-        grid.addWidget(self.pt_et_up,  0, 0)
-        grid.addWidget(self.pt_et_dn,  0, 1)
+        grid.addWidget(self.pt_eu_lbl,  0, 0)
+        grid.addWidget(self.pt_ed_lbl,  0, 1)
         return grp
     
     def _build_nitrous_pt_group(self):
@@ -407,11 +387,11 @@ class GroundStation(QMainWindow):
 
         # TODO: The redlines in GUI are not the same as redline in GUI. Must change
         # once redlines are determined by fluids.
-        self.pt_nit_up = SensorLabel("Nitrous Upstream",  "psi", warning_hi=1400)
-        self.pt_nit_dn = SensorLabel("Nitrous Downstream","psi", warning_hi=1400)
+        self.pt_nu_lbl = SensorLabel("Nitrous Upstream",  "psi", warning_hi=1400)
+        self.pt_nd_lbl = SensorLabel("Nitrous Downstream","psi", warning_hi=1400)
 
-        grid.addWidget(self.pt_nit_up, 1, 0)
-        grid.addWidget(self.pt_nit_dn, 1, 1)
+        grid.addWidget(self.pt_nu_lbl, 1, 0)
+        grid.addWidget(self.pt_nd_lbl, 1, 1)
         return grp
 
     def _build_lc_group(self):
@@ -484,33 +464,35 @@ class GroundStation(QMainWindow):
         return grp
 
     def _build_ethane_heater_group(self):
-        grp = QGroupBox("HEATERS")
+        grp = QGroupBox("ETHANE HEATERS")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
-        grid = QGridLayout(grp)
-        grid.setSpacing(6)
+        ethane_layout = QVBoxLayout(grp)
+        ethane_layout.setSpacing(6)
+
+        ethane_lbl_layout = QHBoxLayout()
 
         self.eh_1_lbl = SensorLabel("Heater EH1",  "bool")
         self.eh_2_lbl = SensorLabel("Heater EH2", "bool")
 
-        for i, w in enumerate([self.eh_1_lbl, self.eh_2_lbl]):
-            grid.addWidget(w, 0, i)
-       
+        ethane_lbl_layout.addWidget(self.eh_1_lbl)
+        ethane_lbl_layout.addWidget(self.eh_2_lbl)
+
+        ethane_layout.addLayout(ethane_lbl_layout)
+
+        # Heater Button
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(6)
+
+        self.btn_eh1 = ValveButton("Ethane Heater 1",  "ETHANE_H1_ON",  "ETHANE_H1_OFF", color= "#ff4466", useOnOff=True)
+        self.btn_eh2  = ValveButton("Ethane Heater 2",  "ETHANE_H2_ON",  "ETHANE_H2_OFF", color= "#ff4466", useOnOff=True)
+
+        for btn in [self.btn_eh1, self.btn_eh2]:
+            btn.clicked.connect(lambda checked, b=btn: b.toggle(self.send_fn))
+            btn_layout.addWidget(btn)
+
+        ethane_layout.addLayout(btn_layout)
+        
         return grp
-
-    # def _build_nitrous_heater_group(self):
-    #     grp = QGroupBox("HEATERS")
-    #     grp.setFont(QFont("Courier New", 9, QFont.Bold))
-    #     grid = QGridLayout(grp)
-    #     grid.setSpacing(6)
-
-    #     self.nh_1_lbl = SensorLabel("Heater NH1",  "bool")
-    #     self.nh_2_lbl = SensorLabel("Heater NH2",  "bool")
-
-    #     for i, w in enumerate([self.nh_1_lbl, self.nh_2_lbl]):
-    #         grid.addWidget(w, 0, i)
-       
-    #     return grp
-
 
     def _build_nitrous_heater_group(self):
         grp = QGroupBox("NITROUS HEATERS")
@@ -526,19 +508,7 @@ class GroundStation(QMainWindow):
         nitrous_lbl_layout.addWidget(self.nh_1_lbl)
         nitrous_lbl_layout.addWidget(self.nh_2_lbl)
 
-        # nitrous_layout = QVBoxLayout()
         nitrous_layout.addLayout(nitrous_lbl_layout)
-        
-        # nitrous_btn_layout = QHBoxLayout()
-        # btn_n_10 = QPushButton("+10°")
-        # btn_n_10.setFont(QFont("Courier New", 9))
-        # btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_MBV_10"))
-        # btn_n_90 = QPushButton("+90°")
-        # btn_n_90.setFont(QFont("Courier New", 9))
-        # btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_MBV_90N"))
-        # nitrous_btn_layout.addWidget(btn_n_10)
-        # nitrous_btn_layout.addWidget(btn_n_90)
-        # nitrous_layout.addLayout(nitrous_btn_layout)
 
         # Heater Button
         btn_layout = QHBoxLayout()
@@ -573,7 +543,7 @@ class GroundStation(QMainWindow):
         return grp
     
     def _build_tc_group(self):
-        grp = QGroupBox("THERMOCOUPLES")
+        grp = QGroupBox("CHAMBER")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
         grid = QGridLayout(grp)
         grid.setSpacing(6)
@@ -583,8 +553,13 @@ class GroundStation(QMainWindow):
         self.tc_c_display = SensorLabel("Chamber TC", "°C")
         self.tc_r_display = SensorLabel("Reroute TC", "°C")
 
+        self.pt_rr_lbl = SensorLabel("Reroute Pressure", "psi", warning_hi=900)
+        self.pt_ch_lbl = SensorLabel("Chamber Pressure", "psi", warning_hi=1400)
+
         grid.addWidget(self.tc_c_display,  0, 0)
         grid.addWidget(self.tc_r_display,  0, 1)
+        grid.addWidget(self.pt_rr_lbl,  1, 0)
+        grid.addWidget(self.pt_ch_lbl,  1, 1)
         return grp
     
     def _build_ethane_group(self):
@@ -835,7 +810,7 @@ class GroundStation(QMainWindow):
     def _build_export_group(self):
         grp = QGroupBox("DATA LOGGING")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
-        layout = QHBoxLayout(grp)
+        layout = QVBoxLayout(grp)
 
         self.log_btn = QPushButton("⏺  Start Logging")
         self.log_btn.setFixedHeight(36)
@@ -876,7 +851,7 @@ class GroundStation(QMainWindow):
         self.serial_monitor.setStyleSheet(
             "background:#0d1117; color:#58a6ff; border:1px solid #30363d; border-radius:4px;"
         )
-        self.serial_monitor.setMinimumHeight(150)
+        self.serial_monitor.setMinimumHeight(100)
 
         # Clear button
         clear_btn = QPushButton("Clear")
@@ -1081,43 +1056,50 @@ class GroundStation(QMainWindow):
         t = state.get('millis', 0) / 1000.0
 
         # PT readouts
-        et_up  = state.get('PT_EU', float('nan'))
-        et_dn  = state.get('PT_ED', float('nan'))
-        nit_up = state.get('PT_NU', float('nan'))
-        nit_dn = state.get('PT_ND', float('nan'))
-        if 'PT_EU' in state:
-            self.pt_et_up.update_value(self._get_display_val(et_up, 'ET_UP'))
-        if 'PT_ED' in state:
-            self.pt_et_dn.update_value(self._get_display_val(et_dn, 'ET_DN'))
-        if 'PT_NU' in state:
-            self.pt_nit_up.update_value(self._get_display_val(nit_up, 'NIT_UP'))
-        if 'PT_ND' in state:
-            self.pt_nit_dn.update_value(self._get_display_val(nit_dn, 'NIT_DN'))
+        pt_eu  = state.get('PT_EU', float('nan'))
+        pt_ed  = state.get('PT_ED', float('nan'))
+        pt_nu = state.get('PT_NU', float('nan'))
+        pt_nd = state.get('PT_ND', float('nan'))
+        pt_rr = state.get('PT_RR', float('nan'))
+        pt_ch = state.get('PT_CH', float('nan'))
 
+        if 'PT_EU' in state:
+            self.pt_eu_lbl.update_value(self._get_display_val(pt_eu, 'PT_EU'))
+        if 'PT_ED' in state:
+            self.pt_ed_lbl.update_value(self._get_display_val(pt_ed, 'PT_ED'))
+        if 'PT_NU' in state:
+            self.pt_nu_lbl.update_value(self._get_display_val(pt_nu, 'PT_NU'))
+        if 'PT_ND' in state:
+            self.pt_nd_lbl.update_value(self._get_display_val(pt_nd, 'PT_ND'))
+        if 'PT_RR' in state:
+            self.pt_rr_lbl.update_value(self._get_display_val(pt_rr, 'PT_RR'))
+        if 'PT_CH' in state:
+            self.pt_ch_lbl.update_value(self._get_display_val(pt_ch, 'PT_CH'))
+        
         # LC readouts
-        lc1 = state.get('LC_E1', 0.0) if 'LC_E1' in state else 0.0
-        lc2 = state.get('LC_E2', 0.0) if 'LC_E2' in state else 0.0
-        lc3 = state.get('LC_E3', 0.0) if 'LC_E3' in state else 0.0
-        et_total = lc1 + lc2 + lc3 if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']) else float('nan')
-        n1  = state.get('LC_N1', 0.0) if 'LC_N1' in state else 0.0
-        n2  = state.get('LC_N2', 0.0) if 'LC_N2' in state else 0.0
-        n3  = state.get('LC_N3', 0.0) if 'LC_N3' in state else 0.0
-        nit_total = n1 + n2 + n3 if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']) else float('nan')
+        lc_e1 = state.get('LC_E1', 0.0) if 'LC_E1' in state else 0.0
+        lc_e2 = state.get('LC_E2', 0.0) if 'LC_E2' in state else 0.0
+        lc_e3 = state.get('LC_E3', 0.0) if 'LC_E3' in state else 0.0
+        et_total = lc_e1 + lc_e2 + lc_e3 if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']) else float('nan')
+        lc_n1  = state.get('LC_N1', 0.0) if 'LC_N1' in state else 0.0
+        lc_n2  = state.get('LC_N2', 0.0) if 'LC_N2' in state else 0.0
+        lc_n3  = state.get('LC_N3', 0.0) if 'LC_N3' in state else 0.0
+        nit_total = lc_n1 + lc_n2 + lc_n3 if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']) else float('nan')
         
         if 'LC_E1' in state:
-            self.lc_e1.update_value(self._get_display_val(lc1, 'LC1'))
+            self.lc_e1.update_value(self._get_display_val(lc_e1, 'LC_E1'))
         if 'LC_E2' in state:
-            self.lc_e2.update_value(self._get_display_val(lc2, 'LC2'))
+            self.lc_e2.update_value(self._get_display_val(lc_e2, 'LC_E2'))
         if 'LC_E3' in state:
-            self.lc_e3.update_value(self._get_display_val(lc3, 'LC3'))
+            self.lc_e3.update_value(self._get_display_val(lc_e3, 'LC_E3'))
         if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
             self.lc_et.update_value(self._get_display_val(et_total, 'ET_TOTAL'))
         if 'LC_N1' in state:
-            self.lc_n1.update_value(self._get_display_val(n1, 'NLC1'))
+            self.lc_n1.update_value(self._get_display_val(lc_n1, 'NLC1'))
         if 'LC_N2' in state:
-            self.lc_n2.update_value(self._get_display_val(n2, 'NLC2'))
+            self.lc_n2.update_value(self._get_display_val(lc_n2, 'NLC2'))
         if 'LC_N3' in state:
-            self.lc_n3.update_value(self._get_display_val(n3, 'NLC3'))
+            self.lc_n3.update_value(self._get_display_val(lc_n3, 'NLC3'))
         if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
             self.lc_nt.update_value(self._get_display_val(nit_total, 'NIT_TOTAL'))
 
@@ -1125,6 +1107,17 @@ class GroundStation(QMainWindow):
         lc_t = state.get('LC_T', float('nan'))
         if 'LC_T' in state:
             self.lc_t.update_value(self._get_display_val(lc_t, 'LC_T'))
+
+
+        # Valve states from firmware flags (re-enable if firmware emits these)
+        if 'ERV' in state:
+            self.btn_erv.set_state(bool(state.get('ERV', 0)))
+        if 'EV' in state:
+            self.btn_ev.set_state(bool(state.get('EV', 0)))
+        if 'NRV' in state:
+            self.btn_nrv.set_state(bool(state.get('NRV', 0)))
+        if 'NV' in state:
+            self.btn_nv.set_state(bool(state.get('NV', 0)))
 
         # MBV positions
         mbv_e = state.get('MBV_E', float('nan'))
@@ -1144,22 +1137,11 @@ class GroundStation(QMainWindow):
         if 'TC_R' in state:
             self.tc_r_display.update_value(self._get_display_val(tc_r, 'TC_R'))
 
-        # Valve states from firmware flags (re-enable if firmware emits these)
-        if 'ERV' in state:
-            self.btn_erv.set_state(bool(state.get('ERV', 0)))
-        if 'EV' in state:
-            self.btn_ev.set_state(bool(state.get('EV', 0)))
-        if 'NRV' in state:
-            self.btn_nrv.set_state(bool(state.get('NRV', 0)))
-        if 'NV' in state:
-            self.btn_nv.set_state(bool(state.get('NV', 0)))
-
         # Heaters
-        nh_1 = state.get('NH_1', float('nan'))
-        nh_2 = state.get('NH_2', float('nan'))
-        eh_1 = state.get('EH_1', float('nan'))
-        eh_2 = state.get('EH_2', float('nan'))
-
+        nh_1 = state.get('NH_1', str('nan'))
+        nh_2 = state.get('NH_2', str('nan'))
+        eh_1 = state.get('EH_1', str('nan'))
+        eh_2 = state.get('EH_2', str('nan'))
 
         if 'NH_1' in state:
             self.nh_1_lbl.update_value('True' if nh_1 else 'False')
@@ -1172,10 +1154,10 @@ class GroundStation(QMainWindow):
 
         # Charts
         self.t_hist.append(t)
-        self.et_up_hist.append(et_up)
-        self.et_dn_hist.append(et_dn)
-        self.nit_up_hist.append(nit_up)
-        self.nit_dn_hist.append(nit_dn)
+        self.et_up_hist.append(pt_eu)
+        self.et_dn_hist.append(pt_ed)
+        self.nit_up_hist.append(pt_nu)
+        self.nit_dn_hist.append(pt_nd)
         self.lc_et_hist.append(et_total)
         self.lc_nit_hist.append(nit_total)
 
@@ -1204,46 +1186,47 @@ class GroundStation(QMainWindow):
 
         # CSV logging
         if self.logging_active:
-            row = {'time_s': t}
-            if 'PT_EU' in state:
-                row['ET_UP'] = state['PT_EU']
-            if 'PT_ED' in state:
-                row['ET_DN'] = state['PT_ED']
-            if 'PT_NU' in state:
-                row['NIT_UP'] = state['PT_NU']
-            if 'PT_ND' in state:
-                row['NIT_DN'] = state['PT_ND']
-            if 'LC_E1' in state:
-                row['LC1'] = state['LC_E1']
-            if 'LC_E2' in state:
-                row['LC2'] = state['LC_E2']
-            if 'LC_E3' in state:
-                row['LC3'] = state['LC_E3']
-            if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
-                row['ET_TOTAL'] = et_total
-            if 'LC_N1' in state:
-                row['NLC1'] = state['LC_N1']
-            if 'LC_N2' in state:
-                row['NLC2'] = state['LC_N2']
-            if 'LC_N3' in state:
-                row['NLC3'] = state['LC_N3']
-            if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
-                row['NIT_TOTAL'] = nit_total
-            if 'LC_T' in state:
-                row['LC_T'] = state['LC_T']
-            if 'TC_C' in state:
-                row['TC_C'] = state['TC_C']
-            if 'TC_R' in state:
-                row['TC_R'] = state['TC_R']
-            if 'ERV' in state:
-                row['ERV'] = state['ERV']
-            if 'EV' in state:
-                row['EV'] = state['EV']
-            if 'NRV' in state:
-                row['NRV'] = state['NRV']
-            if 'NV' in state:
-                row['NV'] = state['NV']
-            self.log_rows.append(row)
+            # row = {'time_s': t}
+            state['time_s'] = t
+            # if 'PT_EU' in state:
+            #     row['PT_EU'] = state['PT_EU']
+            # if 'PT_ED' in state:
+            #     row['PT_ED'] = state['PT_ED']
+            # if 'PT_NU' in state:
+            #     row['PT_NU'] = state['PT_NU']
+            # if 'PT_ND' in state:
+            #     row['PT_ND'] = state['PT_ND']
+            # if 'LC_E1' in state:
+            #     row['LC_E1'] = state['LC_E1']
+            # if 'LC_E2' in state:
+            #     row['LC_E2'] = state['LC_E2']
+            # if 'LC_E3' in state:
+            #     row['LC_E3'] = state['LC_E3']
+            # if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
+            #     row['ET_TOTAL'] = et_total
+            # if 'LC_N1' in state:
+            #     row['NLC1'] = state['LC_N1']
+            # if 'LC_N2' in state:
+            #     row['NLC2'] = state['LC_N2']
+            # if 'LC_N3' in state:
+            #     row['NLC3'] = state['LC_N3']
+            # if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
+            #     row['NIT_TOTAL'] = nit_total
+            # if 'LC_T' in state:
+            #     row['LC_T'] = state['LC_T']
+            # if 'TC_C' in state:
+            #     row['TC_C'] = state['TC_C']
+            # if 'TC_R' in state:
+            #     row['TC_R'] = state['TC_R']
+            # if 'ERV' in state:
+            #     row['ERV'] = state['ERV']
+            # if 'EV' in state:
+            #     row['EV'] = state['EV']
+            # if 'NRV' in state:
+            #     row['NRV'] = state['NRV']
+            # if 'NV' in state:
+            #     row['NV'] = state['NV']
+            self.log_rows.append(state)
 
             # Backup Data Storage
             num_rows = len(self.log_rows)
@@ -1431,20 +1414,20 @@ class GroundStation(QMainWindow):
                 for key, value in row.items():
                     if key == 'time_s':
                         new_row['millis'] = row['time_s'] * 1000
-                    if key == 'ET_UP':
-                        new_row['PT_EU'] = row['ET_UP']
-                    if key == 'ET_DN':
-                        new_row['PT_ED'] = row['ET_DN']
-                    if key == 'NIT_UP':
-                        new_row['PT_NU'] = row['NIT_UP']
-                    if key == 'NIT_DN':
-                        new_row['PT_ND'] = row['NIT_DN']
-                    if key == 'LC1':
-                        new_row['LC_E1'] = row['LC1']
-                    if key == 'LC2':
-                        new_row['LC_E2'] = row['LC2']
-                    if key == 'LC3':
-                        new_row['LC_E3'] = row['LC3']
+                    if key == 'PT_EU':
+                        new_row['PT_EU'] = row['PT_EU']
+                    if key == 'PT_ED':
+                        new_row['PT_ED'] = row['PT_ED']
+                    if key == 'PT_NU':
+                        new_row['PT_NU'] = row['PT_NU']
+                    if key == 'PT_ND':
+                        new_row['PT_ND'] = row['PT_ND']
+                    if key == 'LC_E1':
+                        new_row['LC_E1'] = row['LC_E1']
+                    if key == 'LC_E2':
+                        new_row['LC_E2'] = row['LC_E2']
+                    if key == 'LC_E3':
+                        new_row['LC_E3'] = row['LC_E3']
                     if key == 'ET_TOTAL':
                         new_row['ET_TOTAL'] = row['ET_TOTAL']
                     if key == 'NLC1':
