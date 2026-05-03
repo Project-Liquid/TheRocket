@@ -9,10 +9,10 @@ bool EthaneMBVCloseFailureCondition() { return; }
 bool NitrousMBVCloseFailureCondition() { return; }
 bool CombustionPropogationCondition() { return; }
 bool InlineThermalDecompCondition() { return; }
-bool LostLoadCellCondition() { return; }
+bool LostLoadCellCondition() { return; } //Unnecessary, operator control
 bool EthaneUnderweightCondition() { return EthaneLC1->readJoint(1) < ETHANE_WEIGHT_REDLINE; }
-bool NitrousUnderweightCondition() { return;}
-bool EthaneOverweightCondition() { return; }
+bool NitrousUnderweightCondition() { return;} //Unnecessary, operator control
+bool EthaneOverweightCondition() { return; } //Unnecessary, operator control
 bool NitrousOverweightCondition() { return NitrousLC1->readJoint(1) > NITROUS_WEIGHT_REDLINE;}
 
 // Redline Responses
