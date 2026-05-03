@@ -107,13 +107,14 @@ class SerialWorker(QObject):
 #  Valve Button Widget
 # ─────────────────────────────────────────
 class ValveButton(QPushButton):
-    def __init__(self, label, cmd_on, cmd_off, parent=None):
+    def __init__(self, label, cmd_on, cmd_off, parent=None, color="#ff4466"):
         super().__init__(label, parent)
         self.cmd_on = cmd_on
         self.cmd_off = cmd_off
         self._open = False
         self.setFixedHeight(48)
         self.setFont(QFont("Courier New", 10, QFont.Bold))
+        self.color = color
         self._refresh()
 
     def toggle(self, send_fn):
@@ -134,7 +135,7 @@ class ValveButton(QPushButton):
             self.setText(self.text().split('●')[0].strip() + "  ● OPEN")
         else:
             self.setStyleSheet(
-                "background:#1a1a2e; color:#ff4466; border:2px solid #ff4466;"
+                f"background:#1a1a2e; color:{self.color}; border:2px solid {self.color};"
                 "border-radius:4px; font-weight:bold;"
             )
             self.setText(self.text().split('●')[0].strip().replace('  ', '') + "  ● CLOSED")
@@ -222,6 +223,9 @@ class GroundStation(QMainWindow):
         self.parent_folder = Path(Path.cwd().as_posix() + "/stream_data")
         self.log_start_time: datetime | None = None
         self.log_folder_path: Path | None = None
+
+        # Autolog
+        self.auto_log = True
         
     # -- Reque
 
@@ -252,6 +256,7 @@ class GroundStation(QMainWindow):
         content.setSpacing(8)
 
         left = QVBoxLayout()
+        left.addWidget(self._build_ethane_group())
         left.addWidget(self._build_pt_group())
         left.addWidget(self._build_lc_group())
         left.addWidget(self._build_tc_group())
@@ -260,7 +265,8 @@ class GroundStation(QMainWindow):
         left.addStretch()
 
         right = QVBoxLayout()
-        right.addWidget(self._build_valve_group())
+        # right.addWidget(self._build_valve_group())
+        right.addWidget(self._build_nitrous_valves())
         right.addWidget(self._build_mbv_group())
         right.addWidget(self._build_cold_flow_group())
         right.addWidget(self._build_static_fire_group())
@@ -287,9 +293,14 @@ class GroundStation(QMainWindow):
         refresh_btn.setFixedWidth(90)
         refresh_btn.clicked.connect(self._refresh_ports)
 
+        self.auto_log_btn = QPushButton("Auto Log On")
+        self.auto_log_btn.setFixedWidth(100)
+        self.auto_log_btn.clicked.connect(self._toggle_autolog)
+        self.auto_log_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
+
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.setFixedWidth(100)
-        self.connect_btn.clicked.connect(self._toggle_connection)
+        self.connect_btn.clicked.connect(self._toggle_connection_and_log)
         self.connect_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
 
         self.status_lbl = QLabel("● Disconnected")
@@ -299,6 +310,7 @@ class GroundStation(QMainWindow):
         bar.addWidget(lbl)
         bar.addWidget(self.port_combo)
         bar.addWidget(refresh_btn)
+        bar.addWidget(self.auto_log_btn)
         bar.addWidget(self.connect_btn)
         bar.addWidget(self.status_lbl)
         bar.addStretch()
@@ -361,6 +373,21 @@ class GroundStation(QMainWindow):
         grid.addWidget(self.tc_r,  0, 1)
         return grp
     
+    def _build_ethane_group(self):
+        grp = QGroupBox("Ethane Valves")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
+
+        self.btn_erv = ValveButton("Ethane Run Valve",   "ETHANE_RUN_ON",   "ETHANE_RUN_OFF")
+        self.btn_ev  = ValveButton("Ethane Vent",        "ETHANE_VENT_ON",  "ETHANE_VENT_OFF")
+        
+        for btn in [self.btn_erv, self.btn_ev]:
+            btn.clicked.connect(lambda checked, b=btn: b.toggle(self.send_fn))
+            layout.addWidget(btn)
+
+        return grp
+
 
 
     def _build_valve_group(self):
@@ -389,6 +416,25 @@ class GroundStation(QMainWindow):
         layout.addWidget(estop)
 
         return grp
+    
+    def _build_nitrous_valves(self):
+        grp = QGroupBox("Nitrous Valves")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
+
+        # self.btn_erv = ValveButton("Ethane Run Valve",   "ETHANE_RUN_ON",   "ETHANE_RUN_OFF")
+        # self.btn_ev  = ValveButton("Ethane Vent",        "ETHANE_VENT_ON",  "ETHANE_VENT_OFF")
+        self.btn_nrv = ValveButton("Nitrous Run Valve",  "NITROUS_RUN_ON",  "NITROUS_RUN_OFF",color= "#58a6ff")
+        self.btn_nv  = ValveButton("Nitrous Vent",       "NITROUS_VENT_ON", "NITROUS_VENT_OFF",color= "#58a6ff")
+
+
+        for btn in [self.btn_nrv, self.btn_nv]:
+            btn.clicked.connect(lambda checked, b=btn: b.toggle(self.send_fn))
+            layout.addWidget(btn)
+
+        return grp
+
 
     def _build_mbv_group(self):
         grp = QGroupBox("MOTORIZED BALL VALVES")
@@ -630,6 +676,28 @@ class GroundStation(QMainWindow):
         self.port_combo.clear()
         ports = [p.device for p in serial.tools.list_ports.comports()]
         self.port_combo.addItems(ports if ports else ["No ports found"])
+
+    def _toggle_autolog(self):
+        self.auto_log = not self.auto_log
+
+        if self.auto_log:
+            self.auto_log_btn.setText("Auto Log On")
+            self.auto_log_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
+            if self.serial_thread and self.serial_thread.isRunning():
+                self._toggle_logging()  # Start logging if already connected
+        else:
+            self.auto_log_btn.setText("Auto Log Off")
+            self.auto_log_btn.setStyleSheet("background:#8b949e; color:#fff; border-radius:4px;")
+            if self.logging_active:
+                self._toggle_logging()  # Stop logging if disabling autolog
+    
+    def _toggle_connection_and_log(self):
+        if self.serial_thread and self.serial_thread.isRunning():
+            self._disconnect()
+        else:
+            self._connect()
+        if self.auto_log: self._toggle_logging()
+
 
     def _toggle_connection(self):
         if self.serial_thread and self.serial_thread.isRunning():
