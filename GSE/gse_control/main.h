@@ -10,6 +10,7 @@
 #include "serial.h"
 #include "redline.h"
 #include "procedures.h"
+#include "cmdBuffer.h"
 
 #include <StandardCplusplus.h>
 #include <string>
@@ -205,6 +206,8 @@ extern Relay Ignitor;
  * - Serial2 is radio
 */
 extern SerialDualClass SerialDual;
+extern CmdBuffer cmdBuffer;
+extern CmdBuffer cmdBuffer2;
 
 // Redlines
 extern int current_highest_redline;

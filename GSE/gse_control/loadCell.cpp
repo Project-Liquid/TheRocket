@@ -3,6 +3,7 @@
 LoadCell::LoadCell(int DT_PIN, int SCK_PIN, int gain) {
   this->gain = gain;
   scale.begin(DT_PIN, SCK_PIN);
+  if (!scale.wait_ready_timeout(1000)) Serial.println("Load cell not found");
   scale.tare();
 } 
 

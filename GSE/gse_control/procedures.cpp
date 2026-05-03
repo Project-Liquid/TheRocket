@@ -123,7 +123,7 @@ void staticFire() {
 
   Ignitor.setNextActuation(5000, true);
   
-  if (ChamberTC->getTemperature() > 100) {
+  // if (ChamberTC->getTemperature() > 100) {
     NitrousMBV->next_90();
     EthaneMBV->setNextActuation(ETHANE_DELAY);
     NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);
@@ -138,5 +138,5 @@ void staticFire() {
     NitrousVent.setNextActuation(ETHANE_DELAY + static_fire_duration_ms + BURNOUT_DELAY + VENT_DELAY + 2*VENT_TIME + 1100, false);
 
     static_fire_initializing = false;
-  }
+  // }
 }
