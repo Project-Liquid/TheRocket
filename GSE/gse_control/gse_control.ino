@@ -7,6 +7,8 @@ TransmissionType transmissionFormat = COMPRESSED;
 unsigned long time_absolute = 0;
 unsigned long time_elapsed = 0;
 bool static_fire_initializing = false;
+unsigned long static_fire_start_ms = 0;
+bool static_fire_steady = false;
 unsigned long static_fire_duration_ms = 0;
 bool heaters_active = false;
 float ETHANE_TARGET_PRESSURE = 0;
@@ -519,6 +521,10 @@ void loop()
 
   if(static_fire_initializing) {
     staticFire();
+  }
+
+  if (!static_fire_steady && static_fire_start_ms > 0 && time_absolute - static_fire_start_ms >= 500) {
+    static_fire_steady = true;
   }
   
 
