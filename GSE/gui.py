@@ -6,6 +6,7 @@ import math
 from collections import deque
 from datetime import datetime
 
+from matplotlib.pyplot import grid
 import serial
 import serial.tools.list_ports
 
@@ -145,7 +146,7 @@ class ValveButton(QPushButton):
 #  Sensor Readout Widget
 # ─────────────────────────────────────────
 class SensorLabel(QFrame):
-    def __init__(self, title, unit, warning_hi=None, parent=None):
+    def __init__(self, title, unit, warning_hi=None, parent=None, color="#ff4466"):
         super().__init__(parent)
         self.unit = unit
         self.warning_hi = warning_hi
@@ -173,7 +174,11 @@ class SensorLabel(QFrame):
         layout.addWidget(self.value_lbl)
         layout.addWidget(self.unit_lbl)
 
-    def update_value(self, val: float):
+    def update_value(self, val: float, display_moving_avg: bool = False):
+        """
+        If self.moving_average is true, then average display text by last 20
+        """            
+
         self.value_lbl.setText(f"{val:.1f}")
         if self.warning_hi and val > self.warning_hi:
             self.value_lbl.setStyleSheet("color:#ff4466; border:none;")
@@ -226,6 +231,7 @@ class GroundStation(QMainWindow):
 
         # Autolog
         self.auto_log = True
+        self.display_moving_average = False
         
     # -- Reque
 
@@ -251,30 +257,55 @@ class GroundStation(QMainWindow):
         # Top bar: connection
         root.addLayout(self._build_connection_bar())
 
+        # T BAR
+        t_bar = QHBoxLayout()
+        t_bar.setSpacing(8)
+        # build widgets first so we can assign stretch factors
+        thrust_grp = self._build_thrust_group()
+        tc_grp = self._build_tc_group()
+        export_grp = self._build_export_group()
+        # Give thrust and TC groups more horizontal space (stretch > export)
+        t_bar.addWidget(thrust_grp, 3)
+        t_bar.addWidget(tc_grp, 3)
+        t_bar.addWidget(export_grp, 5)
+        t_bar.addStretch()
+        root.addLayout(t_bar)
+
         # Main content
         content = QHBoxLayout()
         content.setSpacing(8)
 
         left = QVBoxLayout()
         left.addWidget(self._build_ethane_group())
-        left.addWidget(self._build_pt_group())
-        left.addWidget(self._build_lc_group())
-        left.addWidget(self._build_tc_group())
+        left.addWidget(self._build_ethane_pt_group())
+        left.addWidget(self._build_ethane_lc_group())
+        left.addWidget(self._build_ethane_mbv_group())
+        # left.addWidget(self._build_tc_group())
         left.addWidget(self._build_serial_monitor_group())
-        left.addWidget(self._build_export_group())
         left.addStretch()
 
         right = QVBoxLayout()
         # right.addWidget(self._build_valve_group())
         right.addWidget(self._build_nitrous_valves())
-        right.addWidget(self._build_mbv_group())
-        right.addWidget(self._build_cold_flow_group())
-        right.addWidget(self._build_static_fire_group())
+        right.addWidget(self._build_nitrous_pt_group())
+        right.addWidget(self._build_nitrous_lc_group())
+        right.addWidget(self._build_nitrous_mbv_group())
+        # right.addWidget(self._build_cold_flow_group())
+        # right.addWidget(self._build_static_fire_group())
+        # right.addWidget(self._build_export_group())
+
         right.addStretch()
 
+        center = QVBoxLayout()
+        center.addWidget(self._build_chart_group())
+        center.addWidget(self._build_cold_flow_group())
+        center.addWidget(self._build_static_fire_group())
+
         content.addLayout(left, 3)
-        content.addWidget(self._build_chart_group(), 5)
-        content.addLayout(right, 2)
+        content.addLayout(center, 5)
+        # content.addWidget(self._build_chart_group(), 5)
+        content.addLayout(right, 3)
+
 
         root.addLayout(content)
 
@@ -298,6 +329,11 @@ class GroundStation(QMainWindow):
         self.auto_log_btn.clicked.connect(self._toggle_autolog)
         self.auto_log_btn.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
 
+        self.rolling_average_button = QPushButton("Display Avg Off")
+        self.rolling_average_button.setFixedWidth(100)
+        self.rolling_average_button.clicked.connect(self._toggle_moving_average)
+        self.rolling_average_button.setStyleSheet("background:#8b949e; color:#fff; border-radius:4px;")
+
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.setFixedWidth(100)
         self.connect_btn.clicked.connect(self._toggle_connection_and_log)
@@ -311,6 +347,7 @@ class GroundStation(QMainWindow):
         bar.addWidget(self.port_combo)
         bar.addWidget(refresh_btn)
         bar.addWidget(self.auto_log_btn)
+        bar.addWidget(self.rolling_average_button)
         bar.addWidget(self.connect_btn)
         bar.addWidget(self.status_lbl)
         bar.addStretch()
@@ -331,6 +368,36 @@ class GroundStation(QMainWindow):
 
         grid.addWidget(self.pt_et_up,  0, 0)
         grid.addWidget(self.pt_et_dn,  0, 1)
+        grid.addWidget(self.pt_nit_up, 1, 0)
+        grid.addWidget(self.pt_nit_dn, 1, 1)
+        return grp
+
+    def _build_ethane_pt_group(self):
+        grp = QGroupBox("ETHANE PRESSURE TRANSDUCERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
+        # once redlines are determined by fluids.
+        self.pt_et_up  = SensorLabel("Ethane Upstream",   "psi", warning_hi=900)
+        self.pt_et_dn  = SensorLabel("Ethane Downstream", "psi", warning_hi=900)
+        
+        grid.addWidget(self.pt_et_up,  0, 0)
+        grid.addWidget(self.pt_et_dn,  0, 1)
+        return grp
+    
+    def _build_nitrous_pt_group(self):
+        grp = QGroupBox("NITROUS PRESSURE TRANSDUCERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
+        # once redlines are determined by fluids.
+        self.pt_nit_up = SensorLabel("Nitrous Upstream",  "psi", warning_hi=1400)
+        self.pt_nit_dn = SensorLabel("Nitrous Downstream","psi", warning_hi=1400)
+
         grid.addWidget(self.pt_nit_up, 1, 0)
         grid.addWidget(self.pt_nit_dn, 1, 1)
         return grp
@@ -357,6 +424,53 @@ class GroundStation(QMainWindow):
             grid.addWidget(w, 1, i)
         grid.addWidget(self.lc_t, 2, 1, 1, 2)
         return grp
+
+    def _build_thrust_group(self):
+        grp = QGroupBox("THRUST LOAD CELL")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        self.lc_t = SensorLabel("Thrust LC", "lbs")
+
+
+        grid.addWidget(self.lc_t, 2, 1, 3, 2)
+        return grp
+
+
+    def _build_ethane_lc_group(self):
+        grp = QGroupBox("ETHANE LOAD CELLS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        self.lc_e1 = SensorLabel("Ethane LC1",  "lbs")
+        self.lc_e2 = SensorLabel("Ethane LC2",  "lbs")
+        self.lc_e3 = SensorLabel("Ethane LC3",  "lbs")
+        self.lc_et = SensorLabel("Ethane TOTAL","lbs")
+
+
+        for i, w in enumerate([self.lc_e1, self.lc_e2, self.lc_e3, self.lc_et]):
+            grid.addWidget(w, 0, i)
+       
+        return grp
+
+    def _build_nitrous_lc_group(self):
+        grp = QGroupBox("NITROUS LOAD CELLS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        self.lc_n1 = SensorLabel("Nitrous LC1", "lbs")
+        self.lc_n2 = SensorLabel("Nitrous LC2", "lbs")
+        self.lc_n3 = SensorLabel("Nitrous LC3", "lbs")
+        self.lc_nt = SensorLabel("Nitrous TOTAL","lbs")
+        
+        for i, w in enumerate([self.lc_n1, self.lc_n2, self.lc_n3, self.lc_nt]):
+            grid.addWidget(w, 1, i)
+        
+        # grid.addWidget(self.lc_t, 2, 1, 1, 2)
+        return grp
     
     def _build_tc_group(self):
         grp = QGroupBox("THERMOCOUPLES")
@@ -366,11 +480,26 @@ class GroundStation(QMainWindow):
 
         # TODO: The redlines in GUI are not the same as redline in GUI. Must change
         # once redlines are determined by fluids.
-        self.tc_c = SensorLabel("Chamber TC", "°C")
-        self.tc_r = SensorLabel("Reroute TC", "°C")
+        self.tc_c_display = SensorLabel("Chamber TC", "°C")
+        self.tc_r_display = SensorLabel("Reroute TC", "°C")
 
-        grid.addWidget(self.tc_c,  0, 0)
-        grid.addWidget(self.tc_r,  0, 1)
+        grid.addWidget(self.tc_c_display,  0, 0)
+        grid.addWidget(self.tc_r_display,  0, 1)
+        return grp
+
+    def _build_heater_group(self):
+        grp = QGroupBox("HEATERS")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        grid = QGridLayout(grp)
+        grid.setSpacing(6)
+
+        # TODO: The redlines in GUI are not the same as redline in GUI. Must change
+        # once redlines are determined by fluids.
+        self.heater = SensorLabel("Chamber TC", "°C")
+        self.tc_r_display = SensorLabel("Reroute TC", "°C")
+
+        grid.addWidget(self.tc_c_display,  0, 0)
+        grid.addWidget(self.tc_r_display,  0, 1)
         return grp
     
     def _build_ethane_group(self):
@@ -434,7 +563,66 @@ class GroundStation(QMainWindow):
             layout.addWidget(btn)
 
         return grp
+    
+    def _build_ethane_mbv_group(self):
+        grp = QGroupBox("MOTORIZED BALL VALVES")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
 
+        # Ethane MBV
+        ethane_layout = QVBoxLayout()
+        ethane_lbl = QLabel("Ethane MBV")
+        ethane_lbl.setFont(QFont("Courier New", 9, QFont.Bold))
+        ethane_lbl.setStyleSheet("color:#ff7b72;")
+        self.mbv_e_display = SensorLabel("Position", "°")
+        ethane_layout.addWidget(ethane_lbl)
+        ethane_layout.addWidget(self.mbv_e_display)
+        
+        ethane_btn_layout = QHBoxLayout()
+        btn_e_10 = QPushButton("+10°")
+        btn_e_10.setFont(QFont("Courier New", 9))
+        btn_e_10.clicked.connect(lambda: self.send_fn("ETHANE_MBV_10"))
+        btn_e_90 = QPushButton("+90°")
+        btn_e_90.setFont(QFont("Courier New", 9))
+        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_MBV_90N"))
+        ethane_btn_layout.addWidget(btn_e_10)
+        ethane_btn_layout.addWidget(btn_e_90)
+        ethane_layout.addLayout(ethane_btn_layout)
+
+        layout.addLayout(ethane_layout)
+
+        return grp
+    
+    def _build_nitrous_mbv_group(self):
+        grp = QGroupBox("MOTORIZED BALL VALVES")
+        grp.setFont(QFont("Courier New", 9, QFont.Bold))
+        layout = QVBoxLayout(grp)
+        layout.setSpacing(6)
+
+        nitrous_layout = QVBoxLayout()
+        nitrous_lbl = QLabel("Nitrous MBV")
+        nitrous_lbl.setFont(QFont("Courier New", 9, QFont.Bold))
+        nitrous_lbl.setStyleSheet("color:#58a6ff;")
+        self.mbv_n_display = SensorLabel("Position", "°")
+        nitrous_layout.addWidget(nitrous_lbl)
+        nitrous_layout.addWidget(self.mbv_n_display)
+        
+        nitrous_btn_layout = QHBoxLayout()
+        btn_n_10 = QPushButton("+10°")
+        btn_n_10.setFont(QFont("Courier New", 9))
+        btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_MBV_10"))
+        btn_n_90 = QPushButton("+90°")
+        btn_n_90.setFont(QFont("Courier New", 9))
+        btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_MBV_90N"))
+        nitrous_btn_layout.addWidget(btn_n_10)
+        nitrous_btn_layout.addWidget(btn_n_90)
+        nitrous_layout.addLayout(nitrous_btn_layout)
+
+        layout.addLayout(nitrous_layout)
+        return grp
+
+    
 
     def _build_mbv_group(self):
         grp = QGroupBox("MOTORIZED BALL VALVES")
@@ -562,7 +750,7 @@ class GroundStation(QMainWindow):
     def _build_export_group(self):
         grp = QGroupBox("DATA LOGGING")
         grp.setFont(QFont("Courier New", 9, QFont.Bold))
-        layout = QVBoxLayout(grp)
+        layout = QHBoxLayout(grp)
 
         self.log_btn = QPushButton("⏺  Start Logging")
         self.log_btn.setFixedHeight(36)
@@ -690,6 +878,20 @@ class GroundStation(QMainWindow):
             self.auto_log_btn.setStyleSheet("background:#8b949e; color:#fff; border-radius:4px;")
             if self.logging_active:
                 self._toggle_logging()  # Stop logging if disabling autolog
+
+    def _toggle_moving_average(self):
+        self.display_moving_average = not self.display_moving_average
+
+        if self.display_moving_average:
+            self.rolling_average_button.setText("Display Avg On")
+            self.rolling_average_button.setStyleSheet("background:#238636; color:#fff; border-radius:4px;")
+            # if self.serial_thread and self.serial_thread.isRunning():
+            #     self._toggle_logging()  # Start logging if already connected
+        else:
+            self.rolling_average_button.setText("Display Avg Off")
+            self.rolling_average_button.setStyleSheet("background:#8b949e; color:#fff; border-radius:4px;")
+            # if self.logging_active:
+            #     self._toggle_logging()  # Stop logging if disabling autolog
     
     def _toggle_connection_and_log(self):
         if self.serial_thread and self.serial_thread.isRunning():
@@ -763,7 +965,33 @@ class GroundStation(QMainWindow):
         self.status_lbl.setStyleSheet("color:#ff4466;")
         self.serial_monitor.clear()
 
+
     # ── Data Handler ──────────────────────────────────────────────
+
+    def _get_mov_avg(self, chl, new_val, num_average_samples=20):
+        if len(self.log_rows) < num_average_samples - 1:
+            num_average_samples = len(self.log_rows) + 1
+        
+        mean_vals = [float(row[chl]) for row in self.log_rows[-(num_average_samples-1):]]
+        mean_vals.append(float(new_val))
+        mean = sum(mean_vals) / len(mean_vals)
+        return mean
+
+
+    def _get_display_val(self, new_val, chl, num_average_samples=20):
+        if self.display_moving_average and self.logging_active:
+            try:
+                return self._get_mov_avg(chl=chl, new_val=new_val,\
+                                     num_average_samples=num_average_samples)
+            except:
+                return new_val
+        else:
+            return new_val
+    
+
+        
+
+
     def _on_data(self, state: dict, packet_size=10):
         t = state.get('millis', 0) / 1000.0
 
@@ -773,13 +1001,13 @@ class GroundStation(QMainWindow):
         nit_up = state.get('PT_NU', float('nan'))
         nit_dn = state.get('PT_ND', float('nan'))
         if 'PT_EU' in state:
-            self.pt_et_up.update_value(et_up)
+            self.pt_et_up.update_value(self._get_display_val(et_up, 'ET_UP'))
         if 'PT_ED' in state:
-            self.pt_et_dn.update_value(et_dn)
+            self.pt_et_dn.update_value(self._get_display_val(et_dn, 'ET_DN'))
         if 'PT_NU' in state:
-            self.pt_nit_up.update_value(nit_up)
+            self.pt_nit_up.update_value(self._get_display_val(nit_up, 'NIT_UP'))
         if 'PT_ND' in state:
-            self.pt_nit_dn.update_value(nit_dn)
+            self.pt_nit_dn.update_value(self._get_display_val(nit_dn, 'NIT_DN'))
 
         # LC readouts
         lc1 = state.get('LC_E1', 0.0) if 'LC_E1' in state else 0.0
@@ -792,26 +1020,26 @@ class GroundStation(QMainWindow):
         nit_total = n1 + n2 + n3 if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']) else float('nan')
         
         if 'LC_E1' in state:
-            self.lc_e1.update_value(lc1)
+            self.lc_e1.update_value(self._get_display_val(lc1, 'LC1'))
         if 'LC_E2' in state:
-            self.lc_e2.update_value(lc2)
+            self.lc_e2.update_value(self._get_display_val(lc2, 'LC2'))
         if 'LC_E3' in state:
-            self.lc_e3.update_value(lc3)
+            self.lc_e3.update_value(self._get_display_val(lc3, 'LC3'))
         if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']):
-            self.lc_et.update_value(et_total)
+            self.lc_et.update_value(self._get_display_val(et_total, 'ET_TOTAL'))
         if 'LC_N1' in state:
-            self.lc_n1.update_value(n1)
+            self.lc_n1.update_value(self._get_display_val(n1, 'NLC1'))
         if 'LC_N2' in state:
-            self.lc_n2.update_value(n2)
+            self.lc_n2.update_value(self._get_display_val(n2, 'NLC2'))
         if 'LC_N3' in state:
-            self.lc_n3.update_value(n3)
+            self.lc_n3.update_value(self._get_display_val(n3, 'NLC3'))
         if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']):
-            self.lc_nt.update_value(nit_total)
+            self.lc_nt.update_value(self._get_display_val(nit_total, 'NIT_TOTAL'))
 
         # Thrust load cell
         lc_t = state.get('LC_T', float('nan'))
         if 'LC_T' in state:
-            self.lc_t.update_value(lc_t)
+            self.lc_t.update_value(self._get_display_val(lc_t, 'LC_T'))
 
         # MBV positions
         mbv_e = state.get('MBV_E', float('nan'))
@@ -827,9 +1055,9 @@ class GroundStation(QMainWindow):
         tc_c = state.get('TC_C', float('nan'))
         tc_r = state.get('TC_R', float('nan'))
         if 'TC_C' in state:
-            self.tc_c_display.update_value(tc_c)
+            self.tc_c_display.update_value(self._get_display_val(tc_c, 'TC_C'))
         if 'TC_R' in state:
-            self.tc_r_display.update_value(tc_r)
+            self.tc_r_display.update_value(self._get_display_val(tc_r, 'TC_R'))
 
         # Valve states from firmware flags (re-enable if firmware emits these)
         if 'ERV' in state:
@@ -840,6 +1068,8 @@ class GroundStation(QMainWindow):
             self.btn_nrv.set_state(bool(state.get('NRV', 0)))
         if 'NV' in state:
             self.btn_nv.set_state(bool(state.get('NV', 0)))
+
+        # Heaters
 
         # Charts
         self.t_hist.append(t)
@@ -902,6 +1132,10 @@ class GroundStation(QMainWindow):
                 row['NIT_TOTAL'] = nit_total
             if 'LC_T' in state:
                 row['LC_T'] = state['LC_T']
+            if 'TC_C' in state:
+                row['TC_C'] = state['TC_C']
+            if 'TC_R' in state:
+                row['TC_R'] = state['TC_R']
             if 'ERV' in state:
                 row['ERV'] = state['ERV']
             if 'EV' in state:
