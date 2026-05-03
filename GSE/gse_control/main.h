@@ -56,7 +56,7 @@
 // Test Procedure Timings
 #define VENT_DELAY              1000
 #define VENT_TIME               3000
-#define RUN_EQUALIZE_TIME       5000
+#define RUN_EQUALIZE_TIME       1000
 #define ETHANE_DELAY            200
 #define BURNOUT_DELAY           500
 #define OVERPRESSURE_VENT_TIME  10000
