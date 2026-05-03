@@ -27,11 +27,18 @@ private:
   const float counts_per_degree = (ff * counts_per_motor_rev * gear_ratio) / 360.0;
   const float counts_per_90 = (long)(90 * counts_per_degree);
 
+  // --- Circular Buffer Implementation ---
+  static const int MAX_SCHEDULE = 50; // Adjust this limit as needed
+
   struct ScheduledActuation {
     unsigned long trigger_ms;
     float degrees;
   };
-  std::vector<ScheduledActuation> scheduled_actuations;
+  
+  ScheduledActuation schedule[MAX_SCHEDULE];
+  int head = 0;  // Index of the oldest task (read point)
+  int tail = 0;  // Index of the newest task (write point)
+  int count = 0; // Current number of tasks in the queue
 
 public:
   MBV(int pwm_pin, int encoder_pin_1, int encoder_pin_2);
