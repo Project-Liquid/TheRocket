@@ -494,5 +494,5 @@ void loop()
     staticFire();
   }
   
-  //delay(10);
+
 }
