@@ -27,22 +27,36 @@ bool Relay::state() {
 }
 
 void Relay::setNextActuation(int delay, bool open) {
-  scheduled_actuations.push_back({ millis() + (unsigned long)delay, open });
+  // Check if we have room in the buffer
+  if (count < MAX_SCHEDULE) {
+    schedule[tail] = { millis() + (unsigned long)delay, open };
+    tail = (tail + 1) % MAX_SCHEDULE; // Wrap around
+    count++;
+  } else {
+    Serial.println("Warning: Relay actuation queue is full!");
+  }
 }
 
 void Relay::checkScheduledActuation() {
-  if (!scheduled_actuations.empty() && millis() >= scheduled_actuations[0].trigger_ms) {
-    if (scheduled_actuations[0].open) {
+  // If there are tasks and the oldest one's time has arrived
+  if (count > 0 && millis() >= schedule[head].trigger_ms) {
+    
+    if (schedule[head].open) {
       open();
     } else {
       close();
     }
-    scheduled_actuations.erase(scheduled_actuations.begin());
+    
+    head = (head + 1) % MAX_SCHEDULE; // Move head to "erase"
+    count--;
   }
 }
 
 void Relay::clearSchedule() {
-  scheduled_actuations.clear();
+  // Instantly reset the queue pointers
+  head = 0;
+  tail = 0;
+  count = 0;
 }
 
 void Relay::neutralize() {
