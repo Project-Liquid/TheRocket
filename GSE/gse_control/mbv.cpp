@@ -94,18 +94,27 @@ bool MBV::isOpen() {
 }
 
 void MBV::setNextActuation(int delay, float degrees) {
-  scheduled_actuations.push_back({ millis() + (unsigned long)delay, degrees });
+  if (count < MAX_SCHEDULE) {
+    schedule[tail] = { millis() + (unsigned long)delay, degrees };
+    tail = (tail + 1) % MAX_SCHEDULE; // Wrap around if we hit the end of the array
+    count++;
+  } else {
+    Serial.println("Warning: Actuation queue is full!");
+  }
 }
 
 void MBV::checkScheduledActuation() {
-  if (!scheduled_actuations.empty() && millis() >= scheduled_actuations[0].trigger_ms) {
+  if (count > 0 && millis() >= schedule[head].trigger_ms) {
     next_90();
-    scheduled_actuations.erase(scheduled_actuations.begin());
+    head = (head + 1) % MAX_SCHEDULE; // Move the head forward to "erase" the task
+    count--;
   }
 }
 
 void MBV::clearSchedule() {
-  scheduled_actuations.clear();
+  head = 0;
+  tail = 0;
+  count = 0;
 }
 
 void MBV::neutralize() {
