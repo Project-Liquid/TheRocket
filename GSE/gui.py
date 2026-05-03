@@ -222,6 +222,18 @@ class GroundStation(QMainWindow):
         self.parent_folder = Path(Path.cwd().as_posix() + "/stream_data")
         self.log_start_time: datetime | None = None
         self.log_folder_path: Path | None = None
+        
+    # -- Reque
+
+    def reque(self):
+        """Rests the queue length"""
+        self.t_hist    = deque(maxlen=self.HISTORY_LEN)
+        self.et_up_hist = deque(maxlen=self.HISTORY_LEN)
+        self.et_dn_hist = deque(maxlen=self.HISTORY_LEN)
+        self.nit_up_hist = deque(maxlen=self.HISTORY_LEN)
+        self.nit_dn_hist = deque(maxlen=self.HISTORY_LEN)
+        self.lc_et_hist = deque(maxlen=self.HISTORY_LEN)
+        self.lc_nit_hist = deque(maxlen=self.HISTORY_LEN)
 
 
     # ── UI Construction ──────────────────────────────────────────
@@ -381,7 +393,7 @@ class GroundStation(QMainWindow):
         btn_e_10.clicked.connect(lambda: self.send_fn("ETHANE_MBV_10"))
         btn_e_90 = QPushButton("+90°")
         btn_e_90.setFont(QFont("Courier New", 9))
-        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_MBV_90"))
+        btn_e_90.clicked.connect(lambda: self.send_fn("ETHANE_MBV_90N"))
         ethane_btn_layout.addWidget(btn_e_10)
         ethane_btn_layout.addWidget(btn_e_90)
         ethane_layout.addLayout(ethane_btn_layout)
@@ -401,7 +413,7 @@ class GroundStation(QMainWindow):
         btn_n_10.clicked.connect(lambda: self.send_fn("NITROUS_MBV_10"))
         btn_n_90 = QPushButton("+90°")
         btn_n_90.setFont(QFont("Courier New", 9))
-        btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_90"))
+        btn_n_90.clicked.connect(lambda: self.send_fn("NITROUS_MBV_90N"))
         nitrous_btn_layout.addWidget(btn_n_10)
         nitrous_btn_layout.addWidget(btn_n_90)
         nitrous_layout.addLayout(nitrous_btn_layout)
@@ -985,6 +997,8 @@ class GroundStation(QMainWindow):
                 Load backup data into live charts? (May be slow for large datasets)",
             QMessageBox.Yes | QMessageBox.No
         ) == QMessageBox.Yes:
+            self.HISTORY_LEN = max(len(self.log_rows) + 10, self.HISTORY_LEN)  # increase history length if needed to fit all data
+            self.reque()
             for row in self.log_rows:
                 new_row = {}
                 for key, value in row.items():
