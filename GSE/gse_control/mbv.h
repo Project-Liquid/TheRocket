@@ -28,7 +28,7 @@ private:
   const float counts_per_90 = (long)(90 * counts_per_degree);
 
   // --- Circular Buffer Implementation ---
-  static const int MAX_SCHEDULE = 50; // Adjust this limit as needed
+  static const int MAX_SCHEDULE = 10; // Adjust this limit as needed
 
   struct ScheduledActuation {
     unsigned long trigger_ms;
