@@ -666,7 +666,7 @@ class GroundStation(QMainWindow):
         self.serial_monitor.clear()
 
     # ── Data Handler ──────────────────────────────────────────────
-    def _on_data(self, state: dict, packet_size=100):
+    def _on_data(self, state: dict, packet_size=10):
         t = state.get('millis', 0) / 1000.0
 
         # PT readouts
@@ -985,13 +985,11 @@ class GroundStation(QMainWindow):
                 Load backup data into live charts? (May be slow for large datasets)",
             QMessageBox.Yes | QMessageBox.No
         ) == QMessageBox.Yes:
-            fake_time = 0
             for row in self.log_rows:
                 new_row = {}
                 for key, value in row.items():
                     if key == 'time_s':
-                        new_row['time_s'] = fake_time
-                        fake_time += 1
+                        new_row['millis'] = row['time_s'] * 1000
                     if key == 'ET_UP':
                         new_row['PT_EU'] = row['ET_UP']
                     if key == 'ET_DN':
