@@ -46,5 +46,6 @@ public:
   void setNextActuation(int delay, float degrees = 90);
   void checkScheduledActuation();
   void clearSchedule();
+  void neutralize();
 };
 

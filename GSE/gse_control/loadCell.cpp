@@ -60,6 +60,10 @@ void LoadCell::setCalFactor(float calFactor) {
   cal = calFactor;
 }
 
+void LoadCell::tare() {
+  scale.tare();
+}
+
 float LoadCell::read(int samples) {
   //float raw = getAverage(samples);
   float raw = 0;
@@ -122,26 +126,4 @@ float LoadCell::readJoint(int samples) {
   return -1;
 }
 
-void LoadCell::setRedline(float min_weight, int max_counts) {
-  this->redline_weight = min_weight;
-  this->redline_counts_threshold = max_counts;
-}
-
-bool LoadCell::checkRedline() {
-  if (!joint) return false;
-  float weight = readJoint(1);
-
-  if (weight < redline_weight) {
-    redline_counts++;
-    Serial.print("Extreme weight: "); Serial.println(weight);
-  } else if (redline_counts > 0) {
-    redline_counts--;
-  }
-
-  if (redline_counts > redline_counts_threshold) {
-    redline_counts = 0;
-    return true;
-  }
-  return false;
-}
 

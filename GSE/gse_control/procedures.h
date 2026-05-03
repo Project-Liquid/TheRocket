@@ -34,6 +34,7 @@ void EthaneOverweightResponse();
 void NitrousOverweightResponse();
 
 //=========================TEST SEQUENCES=========================//
+void neutralizeAll();
 void EMERGENCY_VENT();
 void ventEthane();
 void ventNitrous();

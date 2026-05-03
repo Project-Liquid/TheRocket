@@ -67,8 +67,6 @@
 
 #define ETHANE_OVERPRESSURE_PRIORITY        1
 #define NITROUS_OVERPRESSURE_PRIORITY       1
-#define ETHANE_MBV_OPEN_FAILURE_PRIORITY    1
-#define NITROUS_MBV_OPEN_FAILURE_PRIORITY   1
 #define ETHANE_MBV_CLOSE_FAILURE_PRIORITY   1
 #define NITROUS_MBV_CLOSE_FAILURE_PRIORITY  1
 #define COMBUSTION_PROPOGATION_PRIORITY     1
@@ -91,7 +89,7 @@
 #define P_MIN         0.0
 #define P_MAX_ETHANE  1000
 #define P_MAX_NITROUS 1500
-#define P_MAX_CHAMBER ?
+#define P_MAX_CHAMBER 5076.32
 
 
 //========================GLOBAL VARIABLES========================//
@@ -212,8 +210,6 @@ extern SerialDualClass SerialDual;
 extern int current_highest_redline;
 extern Redline EthaneOverpressure;
 extern Redline NitrousOverpressure;
-extern Redline EthaneMBVOpenFailure;
-extern Redline NitrousMBVOpenFailure;
 extern Redline EthaneMBVCloseFailure;
 extern Redline NitrousMBVCloseFailure;
 extern Redline CombustionPropogation;

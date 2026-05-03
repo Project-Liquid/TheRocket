@@ -3,7 +3,7 @@
 bool print_data = true;
 unsigned long start_time = 0; 
 const int runtime = -1;
-TransmissionType transmissionFormat = RAW;
+TransmissionType transmissionFormat = COMPRESSED;
 unsigned long time_absolute = 0;
 unsigned long time_elapsed = 0;
 bool static_fire_initializing = false;
@@ -31,7 +31,7 @@ Transducer EthaneDownstreamPT(ETHANE_DOWNSTREAM_PIN, P_MIN, P_MAX_ETHANE);
 Transducer NitrousUpstreamPT(NITROUS_UPSTREAM_PIN, P_MIN, P_MAX_NITROUS);
 Transducer NitrousDownstreamPT(NITROUS_DOWNSTREAM_PIN, P_MIN, P_MAX_NITROUS);
 Transducer ReroutePT(REROUTE_PT_PIN, P_MIN, P_MAX_NITROUS);
-//Transducer ChamberPT(CHAMBER_PT_PIN, P_MIN, P_MAX_CHAMBER);
+Transducer ChamberPT(CHAMBER_PT_PIN, P_MIN, P_MAX_CHAMBER);
 Relay EthaneRunValve(ETHANE_RUN_PIN);
 Relay EthaneVent(ETHANE_VENT_PIN);
 Relay NitrousRunValve(NITROUS_RUN_PIN);
@@ -59,8 +59,6 @@ ADS1118* ChamberTC = nullptr;
 
 Redline EthaneOverpressure(EthaneOverpressureCondition, EthaneOverpressureResponse, ETHANE_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
 Redline NitrousOverpressure(NitrousOverpressureCondition, NitrousOverpressureResponse, NITROUS_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
-Redline EthaneMBVOpenFailure(EthaneMBVOpenFailureCondition, EthaneMBVOpenFailureResponse, ETHANE_MBV_OPEN_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
-Redline NitrousMBVOpenFailure(NitrousMBVOpenFailureCondition, NitrousMBVOpenFailureResponse, NITROUS_MBV_OPEN_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
 Redline EthaneMBVCloseFailure(EthaneMBVCloseFailureCondition, EthaneMBVCloseFailureResponse, ETHANE_MBV_CLOSE_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
 Redline NitrousMBVCloseFailure(NitrousMBVCloseFailureCondition, NitrousMBVCloseFailureResponse, NITROUS_MBV_CLOSE_FAILURE_PRIORITY, MBV_FAILURE_COUNTS_THRESHOLD);
 Redline CombustionPropogation(CombustionPropogationCondition, CombustionPropogationResponse, COMBUSTION_PROPOGATION_PRIORITY, COMBUSTION_PROPOGATION_COUNTS_THRESHOLD);
@@ -70,7 +68,7 @@ Redline EthaneUnderweight(EthaneUnderweightCondition, EthaneUnderweightResponse,
 Redline NitrousUnderweight(NitrousUnderweightCondition, NitrousUnderweightResponse, NITROUS_UNDERWEIGHT_PRIORITY, UNDERWEIGHT_COUNTS_THRESHOLD);
 Redline EthaneOverweight(EthaneOverweightCondition, EthaneOverweightResponse, ETHANE_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
 Redline NitrousOverweight(NitrousOverweightCondition, NitrousOverweightResponse, NITROUS_OVERWEIGHT_PRIORITY, OVERWEIGHT_COUNTS_THRESHOLD);
-Redline Redlines[13] = {EthaneOverpressure, NitrousOverpressure, EthaneMBVOpenFailure, NitrousMBVOpenFailure, EthaneMBVCloseFailure, NitrousMBVCloseFailure, 
+Redline Redlines[11] = {EthaneOverpressure, NitrousOverpressure, EthaneMBVCloseFailure, NitrousMBVCloseFailure, 
   CombustionPropogation, InlineThermalDecomp, LostLoadCell, EthaneUnderweight, NitrousUnderweight, EthaneOverweight, NitrousOverweight};
 
 //===========================FUNCTIONS============================//
@@ -82,7 +80,6 @@ Redline Redlines[13] = {EthaneOverpressure, NitrousOverpressure, EthaneMBVOpenFa
  */
 void status(TransmissionType format = COMPRESSED) {
   time_elapsed = millis()-start_time;
-  //long time = millis();
   bool print_current_poll = false;
 
   switch (format) {
@@ -129,6 +126,8 @@ void status(TransmissionType format = COMPRESSED) {
         SerialDual.print("|PT_ED:");  SerialDual.print(EthaneDownstreamPT.readPressure(), 3);
         SerialDual.print("|PT_NU:");  SerialDual.print(NitrousUpstreamPT.readPressure(), 3);
         SerialDual.print("|PT_ND:");  SerialDual.print(NitrousDownstreamPT.readPressure(), 3);
+        SerialDual.print("|PT_RR:");  SerialDual.print(ReroutePT.readPressure(), 3);
+        SerialDual.print("|PT_CH:");  SerialDual.print(ChamberPT.readPressure(), 3);
         PTLog.last_trigger_ms = time_absolute - (time_absolute % PTLog.interval_ms);
         print_current_poll = true;
       }
@@ -160,7 +159,7 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->getTemperature());
+        SerialDual.print("|TC_C:"); SerialDual.print(Thermocouple.cToF(ChamberTC->getTemperature()));
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
@@ -229,6 +228,7 @@ void processCommand() {
     else cmd = Serial2.readStringUntil('\n');
     cmd.trim();
     cmd.toUpperCase();
+    SerialDual.println(cmd);
 
     // vent
     if (cmd.equalsIgnoreCase("ETHANE_VENT_ON")) {
@@ -354,10 +354,21 @@ void processCommand() {
         NITROUS_WEIGHT_REDLINE = redline.toFloat();
       }
     }
+    else if (cmd.equalsIgnoreCase("ETHANE_LC_TARE")) {
+      EthaneLC1->tare();
+      EthaneLC2->tare();
+      EthaneLC3->tare();
+    }
+    else if (cmd.equalsIgnoreCase("NITROUS_LC_TARE")) {
+      NitrousLC1->tare();
+      NitrousLC2->tare();
+      NitrousLC3->tare();
+    }
 
     else {
       if(full_output) { SerialDual.println("Unknown command.");}
     }
+    
   }
 }
 
@@ -369,7 +380,7 @@ void processCommand() {
 void setup()
 {
   // TURN SERIAL OFF; TURN SERIAL2 ON
-  SerialDual.setActive(true, false);
+  SerialDual.setActive(true, true);
   SerialDual.begin(BAUD_RATE);
   //SerialDual.flush();
   SerialDual.println("START");

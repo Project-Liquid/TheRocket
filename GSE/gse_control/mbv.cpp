@@ -107,3 +107,7 @@ void MBV::checkScheduledActuation() {
 void MBV::clearSchedule() {
   scheduled_actuations.clear();
 }
+
+void MBV::neutralize() {
+  clearSchedule();
+}

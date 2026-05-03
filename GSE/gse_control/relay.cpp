@@ -44,3 +44,8 @@ void Relay::checkScheduledActuation() {
 void Relay::clearSchedule() {
   scheduled_actuations.clear();
 }
+
+void Relay::neutralize() {
+  clearSchedule();
+  close();
+}

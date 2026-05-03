@@ -24,4 +24,5 @@ public:
   void setNextActuation(int delay, bool open);
   void checkScheduledActuation();
   void clearSchedule();
+  void neutralize();
 };

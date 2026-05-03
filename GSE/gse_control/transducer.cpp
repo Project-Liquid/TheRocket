@@ -89,21 +89,21 @@ float Transducer::readPressure() {
     pressure = (v - 1.0) * (P_MAX - P_MIN) / (V_MAX - V_MIN) + P_MIN;
 
     // --- Savitzky-Golay filter ---
-    _pressureBuffer[_bufferIndex] = pressure;
-    _bufferIndex = (_bufferIndex + 1) % SG_WINDOW;
-    if (_bufferCount < SG_WINDOW) _bufferCount++;
+    // _pressureBuffer[_bufferIndex] = pressure;
+    // _bufferIndex = (_bufferIndex + 1) % SG_WINDOW;
+    // if (_bufferCount < SG_WINDOW) _bufferCount++;
 
-    if (_bufferCount < SG_WINDOW) return pressure; // buffer not full yet
+    // if (_bufferCount < SG_WINDOW) return pressure; // buffer not full yet
 
-    // Apply SG convolution; oldest sample is at _bufferIndex (circular buffer)
-    float filtered = 0.0f;
-    for (int i = 0; i < SG_WINDOW; i++) {
-        int idx = (_bufferIndex + i) % SG_WINDOW;
-        filtered += _sgCoeffs[i] * _pressureBuffer[idx];
-    }
+    // // Apply SG convolution; oldest sample is at _bufferIndex (circular buffer)
+    // float filtered = 0.0f;
+    // for (int i = 0; i < SG_WINDOW; i++) {
+    //     int idx = (_bufferIndex + i) % SG_WINDOW;
+    //     filtered += _sgCoeffs[i] * _pressureBuffer[idx];
+    // }
 
     // Return the estimate at window center (window_length / 2 samples ago)
-    pressure = filtered;
+    //pressure = filtered;
     return pressure;
 }
 
@@ -118,24 +118,3 @@ String Transducer::value() {
   return String(readPressure(), 3);
 }
 
-void Transducer::setRedline(float max_pressure, int max_counts) {
-  redline_pressure = max_pressure;
-  redline_counts_threshold = max_counts;
-}
-
-bool Transducer::checkRedline() {
-  pressure = readPressure();
-
-  if (pressure > redline_pressure) {
-    redline_counts++;
-    Serial.print("Extreme pressure: "); Serial.println(pressure);
-  } else if (redline_counts > 0) {
-    redline_counts--;
-  }
-
-  if (redline_counts > redline_counts_threshold) {
-    redline_counts = 0;
-    return true;
-  }
-  return false;
-}
