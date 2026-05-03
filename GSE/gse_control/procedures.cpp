@@ -17,16 +17,38 @@ bool NitrousOverweightCondition() { return NitrousLC1->readJoint(1) > NITROUS_WE
 
 // Redline Responses
 void EthaneOverpressureResponse() {
+  // Clear schedules to prevent conflicts
+  EthaneRunValve.clearSchedule();
+  EthaneVent.clearSchedule();
   
+  // Solenoid
+  EthaneRunValve.open();
+
+  // VENT
+  EthaneVent.setNextActuation(0, true);
+  EthaneVent.setNextActuation(VENT_TIME, false);
 }
 
 void NitrousOverpressureResponse() {
+  // Clear schedules to prevent conflicts
+  NitrousRunValve.clearSchedule();
+  NitrousVent.clearSchedule();
 
+  // Solenoid
+  NitrousRunValve.open();
+
+  // VENT
+  NitrousVent.setNextActuation(0, true);
+  NitrousVent.setNextActuation(VENT_TIME, false);  
 }
 
-void EthaneMBVCloseFailureResponse() {}
+void EthaneMBVCloseFailureResponse() {
+
+}
 void NitrousMBVCloseFailureResponse() {}
-void CombustionPropogationResponse() {}
+void CombustionPropogationResponse() {
+  
+}
 void InlineThermalDecompResponse() {}
 //void LostLoadCellResponse() {}
 void EthaneUnderweightResponse() {EthaneRunValve.neutralize();}
@@ -42,6 +64,10 @@ void neutralizeAll() {
   NitrousRunValve.neutralize();
   EthaneMBV->neutralize();
   NitrousMBV->neutralize();
+  EthaneHeater1->off();
+  EthaneHeater2->off();
+  NitrousHeater1->off();
+  NitrousHeater2->off();
 }
 
 void EMERGENCY_VENT() {

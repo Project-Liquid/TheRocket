@@ -478,7 +478,11 @@ void loop()
 
     if (current_highest_redline > 0) current_highest_redline--;
     for (Redline r : Redlines) {
-      current_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
+      int next_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
+      if (next_highest_redline < current_highest_redline) {
+        neutralizeAll();
+        current_highest_redline = next_highest_redline;
+      }
     }
 
     RedlinePoll.last_trigger_ms = time_absolute - (time_absolute % RedlinePoll.interval_ms);

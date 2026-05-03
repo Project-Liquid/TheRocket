@@ -344,6 +344,8 @@ class GroundStation(QMainWindow):
             grid.addWidget(w, 1, i)
         grid.addWidget(self.lc_t, 2, 1, 1, 2)
         return grp
+    
+
 
     def _build_valve_group(self):
         grp = QGroupBox("VALVES")
