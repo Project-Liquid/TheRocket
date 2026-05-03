@@ -18,11 +18,11 @@ bool Thermocouple::checkConnection() {
 }
 
 float Thermocouple::readHot() {
-  return cToF(mcp.readThermocouple());
+  return mcp.readThermocouple();
 }
 
 float Thermocouple::readCold() {
-  return cToF(mcp.readAmbient());
+  return mcp.readAmbient();
 }
 
 float Thermocouple::readADC() {

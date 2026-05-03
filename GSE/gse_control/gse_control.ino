@@ -165,7 +165,7 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|TC_C:"); SerialDual.print(Thermocouple::cToF(ChamberTC->getTemperature()));
+        SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->getTemperature());
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
@@ -424,10 +424,10 @@ void setup()
   NitrousLC1->join(NitrousLC2, NitrousLC3);
 
 
-  SerialDual.println("START2");
+
   ThrustLC = new ThrustCell();
   ThrustLC->setCalFactor(-5.83);
-  SerialDual.println("START3");
+
 
   RerouteTC = new Thermocouple(0x66);
   RerouteTC2 = new Thermocouple(0x65);
@@ -437,7 +437,6 @@ void setup()
   digitalWrite(CHAMBER_TC_PIN, HIGH);
   ChamberTC = new ADS1118(CHAMBER_TC_PIN);
   delay(100);
-  SerialDual.println("START4");
 
   ChamberTC->begin();
   ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
