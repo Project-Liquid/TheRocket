@@ -8,11 +8,17 @@ class Relay {
 private:
   int pin;
   int is_open;
+  // --- Circular Buffer Implementation ---
+  static const int MAX_SCHEDULE = 50; // Adjust this limit as needed
+
   struct ScheduledActuation {
     unsigned long trigger_ms;
     bool open;
-  };
-  std::vector<ScheduledActuation> scheduled_actuations;
+
+  ScheduledActuation schedule[MAX_SCHEDULE];
+  int head = 0;  // Index of the oldest task
+  int tail = 0;  // Index of the newest task
+  int count = 0; // Current number of tasks in the queue
 
 
 public:
