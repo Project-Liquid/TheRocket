@@ -20,7 +20,7 @@ PollInterval MBVLog{50, 0};
 PollInterval TCLog{200, 0};
 PollInterval RedlinePoll{50, 0};
 PollInterval ValveSchedulePoll{50, 0};
-PollInterval HeaterPoll{500, 0};
+PollInterval HeaterPoll{50, 0};
 float ETHANE_WEIGHT_REDLINE = -27;
 float NITROUS_WEIGHT_REDLINE = 19.5;
 int current_highest_redline = 0;
@@ -236,7 +236,7 @@ void status(TransmissionType format = COMPRESSED) {
   }
 }
 
-void processCommand() {
+void processCommand(float time_elapsed) {
   bool gotCmd = false;
   cmd = "";
   if (serialBuf.feed(Serial, cmd)) {
@@ -247,53 +247,60 @@ void processCommand() {
 
   if (!gotCmd) return;  // nothing ready yet — non-blocking exit
 
-  SerialDual.println(cmd);
+  // New command section
+  SerialDual.println();
+  SerialDual.print("COMMAND|"); SerialDual.print((time_elapsed/1000.0), 3);
+  SerialDual.print("|CMD_RQ:"); SerialDual.print(cmd);
+  SerialDual.print("|CMD_EX:");
+  // SerialDual.println(cmd);
+
   cmd.trim();
   cmd.toUpperCase();
 
   if (cmd.length() == 0) {
-    Serial.println("Empty command");
+    SerialDual.print("Empty command");
+    SerialDual.println();
     return;
   }
 
   // vent
   if (cmd.equals("")) {
-    Serial.println("Empty command");
+    SerialDual.print("Empty command");
   }
   else if (cmd.equalsIgnoreCase("ETHANE_VENT_ON")) {
     EthaneVent.open();
-    if(full_output) { SerialDual.println("ETHANE VENT OPEN"); }
+    if(full_output) { SerialDual.print("ETHANE VENT OPEN"); }
   }
   else if (cmd.equalsIgnoreCase("ETHANE_VENT_OFF")) {
     EthaneVent.close();
-    if(full_output) { SerialDual.println("ETHANE VENT CLOSED"); }
+    if(full_output) { SerialDual.print("ETHANE VENT CLOSED"); }
   } 
   else if (cmd.equalsIgnoreCase("NITROUS_VENT_ON")) {
     NitrousVent.open();
-    if(full_output) { SerialDual.println("NITROUS VENT OPEN"); }
+    if(full_output) { SerialDual.print("NITROUS VENT OPEN"); }
   }
   else if (cmd.equalsIgnoreCase("NITROUS_VENT_OFF")) {
     NitrousVent.close();
-    if(full_output) { SerialDual.println("NITROUS VENT CLOSED"); }
+    if(full_output) { SerialDual.print("NITROUS VENT CLOSED"); }
   }
 
   // solenoid
   else if (cmd.equalsIgnoreCase("ETHANE_RUN_ON")) {
     EthaneRunValve.open();
-    if(full_output) { SerialDual.println("ETHANE RUN VALVE OPEN"); }
+    if(full_output) { SerialDual.print("ETHANE RUN VALVE OPEN"); }
   }
   else if (cmd.equalsIgnoreCase("ETHANE_RUN_OFF")) {
     EthaneRunValve.close();
-    if(full_output) { SerialDual.println("ETHANE RUN VALVE CLOSED"); }
+    if(full_output) { SerialDual.print("ETHANE RUN VALVE CLOSED"); }
   } 
   else if (cmd.equalsIgnoreCase("NITROUS_RUN_ON")) {
     NitrousRunValve.open();
-    if(full_output) { SerialDual.println("NITROUS RUN VALVE OPEN"); }
+    if(full_output) { SerialDual.print("NITROUS RUN VALVE OPEN"); }
   } 
   else if (cmd.equalsIgnoreCase("NITROUS_RUN_OFF")) {
     NitrousRunValve.close();
-    if(full_output) { SerialDual.println("NITROUS RUN VALVE CLOSED"); }
-  } 
+    if(full_output) { SerialDual.print("NITROUS RUN VALVE CLOSED"); }
+  }
   
   // run control -- this is now deprecated
   else if (cmd.equalsIgnoreCase("START")) {
@@ -318,7 +325,7 @@ void processCommand() {
   }
   else if (cmd.equalsIgnoreCase("ETHANE_MBV_RESET")) {
     EthaneMBV->reset();
-    if(full_output) { SerialDual.println("Ethane MBV position reset to zero"); }
+    if(full_output) { SerialDual.print("Ethane MBV position reset to zero"); }
   }
   else if (cmd.equalsIgnoreCase("ETHANE_MBV_STATUS")) {
     EthaneMBV->status();
@@ -333,7 +340,7 @@ void processCommand() {
   }
   else if (cmd.equalsIgnoreCase("NITROUS_MBV_RESET")) {
     NitrousMBV->reset();
-    if(full_output) { SerialDual.println("Nitrous MBV position reset to zero"); }
+    if(full_output) { SerialDual.print("Nitrous MBV position reset to zero"); }
   }
   else if (cmd.equalsIgnoreCase("NITROUS_MBV_STATUS")) {
     NitrousMBV->status();
@@ -407,9 +414,9 @@ void processCommand() {
   }
 
   else {
-    if(full_output) { SerialDual.println("Unknown command.");}
+    if(full_output) { SerialDual.print("Unknown command.");}
   }
-  
+  SerialDual.println();
 }
 
 //===========================EXECUTION============================//
@@ -510,7 +517,7 @@ void loop()
   }
 
   // COMMANDS
-  processCommand();
+  processCommand(time_elapsed);
 
   // Scheduling Updates
   if(time_absolute - ValveSchedulePoll.last_trigger_ms >= ValveSchedulePoll.interval_ms) {
@@ -545,7 +552,7 @@ void loop()
       int current_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
     }
 
-    if (current_highest_redline > -1) {
+    if (current_highest_redline > 0) {
       SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3);
       SerialDual.print("|RD_H:"); SerialDual.print(current_highest_redline);
       SerialDual.print("|RD_L:"); SerialDual.print(last_highest_redline);
