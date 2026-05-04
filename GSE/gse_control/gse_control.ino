@@ -16,7 +16,7 @@ float NITROUS_TARGET_PRESSURE = 0;
 PollInterval PTLog{50, 0};
 PollInterval LCLog{200, 0};
 PollInterval ValveLog{200, 0};
-PollInterval MBVLog{200, 0};
+PollInterval MBVLog{50, 0};
 PollInterval TCLog{200, 0};
 PollInterval RedlinePoll{50, 0};
 PollInterval ValveSchedulePoll{50, 0};
@@ -551,8 +551,6 @@ void loop()
       SerialDual.print("|RD_L:"); SerialDual.print(last_highest_redline);
       SerialDual.println();
     }
-  
-
     RedlinePoll.last_trigger_ms = time_absolute - (time_absolute % RedlinePoll.interval_ms);
   }
 

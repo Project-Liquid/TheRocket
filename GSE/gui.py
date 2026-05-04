@@ -162,14 +162,14 @@ class SensorLabel(QFrame):
         self.setStyleSheet("background:#0d1117; border:1px solid #30363d; border-radius:6px;")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setContentsMargins(12, 10, 12, 10)
 
         self.title_lbl = QLabel(title)
         self.title_lbl.setFont(QFont("Courier New", 8))
         self.title_lbl.setStyleSheet("color:#8b949e; border:none;")
 
         self.value_lbl = QLabel("---")
-        self.value_lbl.setFont(QFont("Courier New", 18, QFont.Bold))
+        self.value_lbl.setFont(QFont("Courier New", 20, QFont.Bold))
         self.value_lbl.setStyleSheet("color:#58a6ff; border:none;")
         self.value_lbl.setAlignment(Qt.AlignRight)
 
@@ -681,6 +681,10 @@ class GroundStation(QMainWindow):
         ethane_btn_layout.addWidget(btn_e_10)
         ethane_btn_layout.addWidget(btn_e_90)
         ethane_layout.addLayout(ethane_btn_layout)
+
+
+        layout.setContentsMargins(12, 12, 12, 12)
+        self.mbv_e_display.setMinimumHeight(80)
 
         layout.addLayout(ethane_layout)
 
