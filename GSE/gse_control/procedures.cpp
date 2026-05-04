@@ -152,8 +152,8 @@ void staticFire() {
   EthaneRunValve.open();
 
   Ignitor.setNextActuation(5000, true);
-  
-  // if (ChamberTC->getTemperature() > 100) {
+
+  // if (ChamberTC->readHot() > 100) {
     NitrousMBV->next_90();
     EthaneMBV->setNextActuation(ETHANE_DELAY);
     NitrousMBV->setNextActuation(ETHANE_DELAY + static_fire_duration_ms);

@@ -201,9 +201,9 @@ extern Heater* NitrousHeater2;
 
 // Thermocouple
 extern Thermocouple* RerouteTC;
-extern Thermocouple* RerouteTC2;
+extern Thermocouple* ChamberTC;
 extern Thermocouple* RerouteTC3;
-extern ADS1118* ChamberTC; 
+
 
 // Ignitor
 extern Relay Ignitor;

@@ -58,9 +58,9 @@ Heater* EthaneHeater2 = nullptr;
 Heater* NitrousHeater1 = nullptr;
 Heater* NitrousHeater2 = nullptr;
 Thermocouple* RerouteTC = nullptr;
-Thermocouple* RerouteTC2 = nullptr;
+Thermocouple* ChamberTC = nullptr;
 Thermocouple* RerouteTC3 = nullptr;
-ADS1118* ChamberTC = nullptr;
+//ADS1118* ChamberTC = nullptr;
 
 Redline EthaneOverpressure(EthaneOverpressureCondition, EthaneOverpressureResponse, ETHANE_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
 Redline NitrousOverpressure(NitrousOverpressureCondition, NitrousOverpressureResponse, NITROUS_OVERPRESSURE_PRIORITY, OVERPRESSURE_COUNTS_THRESHOLD);
@@ -165,7 +165,7 @@ void status(TransmissionType format = COMPRESSED) {
 
       if(time_absolute - TCLog.last_trigger_ms >= TCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->getTemperature());
+        SerialDual.print("|TC_C:"); SerialDual.print(ChamberTC->readHot());
         SerialDual.print("|TC_R:"); SerialDual.print(RerouteTC->readHot());
         TCLog.last_trigger_ms = time_absolute - (time_absolute % TCLog.interval_ms);
         print_current_poll = true;
@@ -454,18 +454,18 @@ void setup()
 
 
   RerouteTC = new Thermocouple(0x66);
-  RerouteTC2 = new Thermocouple(0x65);
+  ChamberTC = new Thermocouple(0x65);
   RerouteTC3 = new Thermocouple(0x67);
 
-  pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
-  digitalWrite(CHAMBER_TC_PIN, HIGH);
-  ChamberTC = new ADS1118(CHAMBER_TC_PIN);
-  delay(100);
+  // pinMode(CHAMBER_TC_PIN, OUTPUT);      // Force SS high to lock Mega in master mode
+  // digitalWrite(CHAMBER_TC_PIN, HIGH);
+  // ChamberTC = new ADS1118(CHAMBER_TC_PIN);
+  // delay(100);
 
-  ChamberTC->begin();
-  ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
-  ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
-  ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
+  // ChamberTC->begin();
+  // ChamberTC->setSamplingRate(ChamberTC->RATE_16SPS);
+  // ChamberTC->setInputSelected(ChamberTC->DIFF_0_1);
+  // ChamberTC->setFullScaleRange(ChamberTC->FSR_0256);
 
   EthaneHeater1 = new Heater(ETHANE_HEATER_1_PIN, &EthaneUpstreamPT);
   EthaneHeater2 = new Heater(ETHANE_HEATER_2_PIN, &EthaneUpstreamPT);
