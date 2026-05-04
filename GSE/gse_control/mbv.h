@@ -21,7 +21,7 @@ private:
   const int TIMEOUT_MS = 3000;
   const int SKIP_ZONE = 50;
 
-  const float counts_per_motor_rev = 751.8;
+  const float counts_per_motor_rev = 500;
   const float gear_ratio = (30.0 / 14.0);
   const float ff = 0.965;
   const float counts_per_degree = (ff * counts_per_motor_rev * gear_ratio) / 360.0;
