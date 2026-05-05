@@ -66,8 +66,6 @@ void LoadCell::tare() {
 }
 
 float LoadCell::read(int samples) {
-  //float raw = getAverage(samples);
-  float raw = 0;
   if (scale.is_ready()) raw = scale.get_units();
   float weight_grams = raw / cal;
   float weight_lbs = weight_grams / 453.592;

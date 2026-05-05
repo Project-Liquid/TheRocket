@@ -98,7 +98,7 @@ class SerialWorker(QObject):
                     try:
                         result[k] = float(v)
                     except ValueError: # non-numeric token — skip
-                        continue
+                        result[k] = str(v)
             return result
         except Exception:
             return {}
@@ -162,14 +162,14 @@ class SensorLabel(QFrame):
         self.setStyleSheet("background:#0d1117; border:1px solid #30363d; border-radius:6px;")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setContentsMargins(8, 6, 8, 6)
 
         self.title_lbl = QLabel(title)
         self.title_lbl.setFont(QFont("Courier New", 8))
         self.title_lbl.setStyleSheet("color:#8b949e; border:none;")
 
         self.value_lbl = QLabel("---")
-        self.value_lbl.setFont(QFont("Courier New", 20, QFont.Bold))
+        self.value_lbl.setFont(QFont("Courier New", 18, QFont.Bold))
         self.value_lbl.setStyleSheet("color:#58a6ff; border:none;")
         self.value_lbl.setAlignment(Qt.AlignRight)
 
@@ -246,13 +246,14 @@ class GroundStation(QMainWindow):
             'MBV_N',
             'TC_C',
             'TC_R',
-            'NH1',
-            'NH2',
-            'EH1',
-            'EH2',
+            'NH_1',
+            'NH_2',
+            'EH_1',
+            'EH_2',
             'RD_H',
             'RD_L',
-            
+            'CMD_RQ',
+            'CMD_EX'
         ]
 
         # Serial monitor
@@ -682,10 +683,6 @@ class GroundStation(QMainWindow):
         ethane_btn_layout.addWidget(btn_e_90)
         ethane_layout.addLayout(ethane_btn_layout)
 
-
-        layout.setContentsMargins(12, 12, 12, 12)
-        self.mbv_e_display.setMinimumHeight(80)
-
         layout.addLayout(ethane_layout)
 
         return grp
@@ -992,9 +989,11 @@ class GroundStation(QMainWindow):
     def _toggle_connection_and_log(self):
         if self.serial_thread and self.serial_thread.isRunning():
             self._disconnect()
+            if self.auto_log and self.logging_active:
+                self._toggle_logging()  # Stop logging if disconnecting
         else:
             self._connect()
-        if self.auto_log: self._toggle_logging()
+            if self.auto_log: self._toggle_logging()
 
 
     def _toggle_connection(self):
@@ -1113,13 +1112,13 @@ class GroundStation(QMainWindow):
             self.pt_ch_lbl.update_value(self._get_display_val(pt_ch, 'PT_CH'))
         
         # LC readouts
-        lc_e1 = state.get('LC_E1', 0.0) if 'LC_E1' in state else 0.0
-        lc_e2 = state.get('LC_E2', 0.0) if 'LC_E2' in state else 0.0
-        lc_e3 = state.get('LC_E3', 0.0) if 'LC_E3' in state else 0.0
+        lc_e1 = state.get('LC_E1', float('nan'))
+        lc_e2 = state.get('LC_E2', float('nan'))
+        lc_e3 = state.get('LC_E3', float('nan'))
         et_total = lc_e1 + lc_e2 + lc_e3 if all(k in state for k in ['LC_E1', 'LC_E2', 'LC_E3']) else float('nan')
-        lc_n1  = state.get('LC_N1', 0.0) if 'LC_N1' in state else 0.0
-        lc_n2  = state.get('LC_N2', 0.0) if 'LC_N2' in state else 0.0
-        lc_n3  = state.get('LC_N3', 0.0) if 'LC_N3' in state else 0.0
+        lc_n1  = state.get('LC_N1', float('nan'))
+        lc_n2  = state.get('LC_N2', float('nan'))
+        lc_n3  = state.get('LC_N3', float('nan'))
         nit_total = lc_n1 + lc_n2 + lc_n3 if all(k in state for k in ['LC_N1', 'LC_N2', 'LC_N3']) else float('nan')
         
         if 'LC_E1' in state:
@@ -1174,19 +1173,21 @@ class GroundStation(QMainWindow):
             self.tc_r_display.update_value(self._get_display_val(tc_r, 'TC_R'))
 
         # Heaters
-        nh_1 = state.get('NH_1', str('nan'))
-        nh_2 = state.get('NH_2', str('nan'))
-        eh_1 = state.get('EH_1', str('nan'))
-        eh_2 = state.get('EH_2', str('nan'))
+        nh_1 = bool(state.get('NH_1', 0))
+        nh_2 = bool(state.get('NH_2', 0))
+        eh_1 = bool(state.get('EH_1', 0))
+        eh_2 = bool(state.get('EH_2', 0))
 
         if 'NH_1' in state:
-            self.nh_1_lbl.update_value('True' if nh_1 else 'False')
+            self.nh_1_lbl.update_value(bool(state.get('NH_1', 0)))
         if 'NH_2' in state:
-            self.nh_2_lbl.update_value('True' if nh_2 else 'False')
+            self.nh_2_lbl.update_value(bool(state.get('NH_2', 0)))
         if 'EH_1' in state:
-            self.eh_1_lbl.update_value('True' if eh_1 else 'False')
+            self.eh_1_lbl.update_value(bool(state.get('EH_1', 0)))
         if 'EH_2' in state:
-            self.eh_2_lbl.update_value('True' if eh_2 else 'False')
+            self.eh_2_lbl.update_value(bool(state.get('EH_2', 0)))
+
+        # Redlines
 
         # Charts
         self.t_hist.append(t)

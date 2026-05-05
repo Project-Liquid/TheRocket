@@ -140,7 +140,8 @@ void status(TransmissionType format = COMPRESSED) {
       
       if(time_absolute - LCLog.last_trigger_ms >= LCLog.interval_ms) {
         if (!print_current_poll) { SerialDual.print("DATA|"); SerialDual.print((time_elapsed/1000.0), 3); }
-        SerialDual.print("|LC_E1:");  SerialDual.print(EthaneLC1->read(1));
+        float lc1= EthaneLC1->read(1);
+        if (lc1 > 0.2 || EthaneLC2->read(1) < 0.3) {SerialDual.print("|LC_E1:");  SerialDual.print(lc1); }
         SerialDual.print("|LC_E2:");  SerialDual.print(EthaneLC2->read(1));
         SerialDual.print("|LC_E3:");  SerialDual.print(EthaneLC3->read(1));
         SerialDual.print("|LC_N1:");  SerialDual.print(NitrousLC1->read(1));
@@ -448,13 +449,11 @@ void setup()
   EthaneLC1->setCalFactor(43.27);
   EthaneLC2->setCalFactor(43.92);
   EthaneLC3->setCalFactor(42.46);
-  NitrousLC1->setCalFactor(40.0);
-  NitrousLC2->setCalFactor(40.0);
-  NitrousLC3->setCalFactor(40.0);
+  NitrousLC1->setCalFactor(51.225);
+  NitrousLC2->setCalFactor(51.225);
+  NitrousLC3->setCalFactor(51.225);
   EthaneLC1->join(EthaneLC2, EthaneLC3);
   NitrousLC1->join(NitrousLC2, NitrousLC3);
-
-
 
   ThrustLC = new ThrustCell();
   ThrustLC->setCalFactor(-5.83);

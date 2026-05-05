@@ -14,12 +14,13 @@ Arduino:
 - [Adafruit_MCP9600](https://github.com/adafruit/Adafruit_MCP9600) by Adafruit
 - [SparkFun Qwiic Scale NAU7802 Library](https://github.com/sparkfun/SparkFun_Qwiic_Scale_NAU7802_Arduino_Library) by sparkfun
 - [StandardCplusplus](https://github.com/maniacbug/StandardCplusplus/blob/master/README.md) by maniacbug. NOTE: this library needs to be manually imported. Download the StandardCplusplus.zip folder in this repository (TheRocket/GSE) and import it with Sketch>Include Library>Add .ZIP Library in the Arduino IDE. **DO NOT** DOWNLOAD THIS LIBRARY FROM ANY OTHER SITE. It will not work. 
-- [ADS1118]() by Alvaro Salazar
+- [ADS1118](https://docs.arduino.cc/libraries/ads1118-library/) by Alvaro Salazar
 
 Python:
 - [pySerial](https://github.com/pyserial/pyserial)
 - [PyQt5](https://doc.qt.io/archives/qtforpython-5/)
 - [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph)
+- [MatPlotLib](https://matplotlib.org/)
 
 ## OVERVIEW:
 The system is split into two distinct systems: Arduino and computer.
@@ -27,7 +28,7 @@ The system is split into two distinct systems: Arduino and computer.
 This system reads and interprets all sensors and controls valves. It contains testing procedures and redlines. All data is printed out in a single datastream over serial, to a computer over USB or a radio. It receives commands over serial to actuate valves or trigger procedures.
 All Arduino code is located in the gse_control folder. It is run from the gse_control.ino file (think main.cpp), which contains the run control and loops. Each unique circuit element has its own class, defined in the corresponding .cpp and .h files. The .ino file initializes objects from each of these classes and calls functions in the main loop. 
 ### Computer:
-This system processes the serial datastream received over radio and presents it visually in a GUI. It can send commands to the Arduino and contains functions to save the datastream. 
+This system processes the serial datastream received over radio and presents it visually in a GUI. It can send commands to the Arduino and contains functions to save the datastream. The Python script also constantly logs data at regular intervals, which can be converted into a .csv file.
 Coded entirely in a single Python file, gui.py.
 
 ## TO RUN:

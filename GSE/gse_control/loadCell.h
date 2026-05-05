@@ -11,6 +11,7 @@ private:
   LoadCell* LC2 = nullptr;
   LoadCell* LC3 = nullptr;
   bool joint = false;
+  float raw = 0;
 
 public:
   LoadCell(int DT_PIN, int SCK_PIN, int gain = 128);
