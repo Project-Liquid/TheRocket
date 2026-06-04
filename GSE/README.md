@@ -13,7 +13,6 @@ Arduino:
 - [Encoder](https://www.pjrc.com/teensy/td_libs_Encoder.html) by Paul Stoffregen
 - [Adafruit_MCP9600](https://github.com/adafruit/Adafruit_MCP9600) by Adafruit
 - [SparkFun Qwiic Scale NAU7802 Library](https://github.com/sparkfun/SparkFun_Qwiic_Scale_NAU7802_Arduino_Library) by sparkfun
-- [StandardCplusplus](https://github.com/maniacbug/StandardCplusplus/blob/master/README.md) by maniacbug. NOTE: this library needs to be manually imported. Download the StandardCplusplus.zip folder in this repository (TheRocket/GSE) and import it with Sketch>Include Library>Add .ZIP Library in the Arduino IDE. **DO NOT** DOWNLOAD THIS LIBRARY FROM ANY OTHER SITE. It will not work. 
 - [ADS1118](https://docs.arduino.cc/libraries/ads1118-library/) by Alvaro Salazar
 
 Python:

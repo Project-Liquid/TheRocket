@@ -12,8 +12,6 @@
 #include "procedures.h"
 #include "cmdBuffer.h"
 
-#include <StandardCplusplus.h>
-#include <string>
 #include "ADS1118.h"
 #include <SPI.h>
 

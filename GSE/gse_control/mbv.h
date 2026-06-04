@@ -2,8 +2,6 @@
 
 #include <Arduino.h>
 #include <Encoder.h>
-#include <StandardCplusplus.h>
-#include <vector>
 
 class MBV {
 private:

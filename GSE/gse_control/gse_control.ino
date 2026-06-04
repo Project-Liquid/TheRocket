@@ -548,7 +548,7 @@ void loop()
     }
 
     for (Redline r : Redlines) {
-      int current_highest_redline = std::max(r.checkTrigger(current_highest_redline), current_highest_redline);
+      int current_highest_redline = max(r.checkTrigger(current_highest_redline), current_highest_redline);
     }
 
     if (current_highest_redline > 0) {
